@@ -4,10 +4,12 @@ import WifiIcon from './icons/WifiIcon';
 import Spinner from './Spinner';
 import LocationCard from './LocationCard';
 import SearchIcon from './icons/SearchIcon';
+import UserIcon from './icons/UserIcon';
 
 interface SidebarProps {
   onSearch: (query: string) => void;
   onToggleSearch: () => void;
+  onToggleProfile: () => void;
   loading: boolean;
   result: SearchResult | null;
   locationError: string | null;
@@ -38,7 +40,7 @@ const featuredPlaces = [
 ];
 
 
-const Sidebar: React.FC<SidebarProps> = ({ onSearch, onToggleSearch, loading, result, locationError, apiError }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onSearch, onToggleSearch, onToggleProfile, loading, result, locationError, apiError }) => {
 
   return (
     <aside className="w-full md:w-[380px] lg:w-[420px] h-full bg-zinc-900/80 backdrop-blur-md border-r border-zinc-700/50 flex flex-col z-10 overflow-y-auto">
@@ -47,13 +49,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearch, onToggleSearch, loading, re
             <WifiIcon />
             <h1 className="text-xl font-semibold text-gray-100">Wi-Fi Locator</h1>
         </div>
-        <button 
-          onClick={onToggleSearch} 
-          aria-label="Search" 
-          className="p-2 rounded-full text-zinc-300 hover:bg-zinc-700 transition-colors md:hidden"
-        >
-          <SearchIcon />
-        </button>
+        <div className="flex items-center space-x-1">
+            <button 
+                onClick={onToggleSearch} 
+                aria-label="Search" 
+                className="p-2 rounded-full text-zinc-300 hover:bg-zinc-700 transition-colors md:hidden"
+            >
+                <SearchIcon />
+            </button>
+        </div>
       </header>
 
       <div className="p-4 flex-grow">

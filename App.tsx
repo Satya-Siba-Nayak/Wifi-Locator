@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
 import SearchOverlay from './components/SearchOverlay';
+import ProfileOverlay from './components/ProfileOverlay';
 import { findWifiLocations } from './services/geminiService';
 import type { SearchResult } from './types';
 
@@ -12,6 +13,7 @@ const App: React.FC = () => {
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -63,6 +65,7 @@ const App: React.FC = () => {
       <Sidebar 
         onSearch={handleSearch}
         onToggleSearch={() => setIsSearchOpen(true)}
+        onToggleProfile={() => setIsProfileOpen(true)}
         loading={loading}
         result={searchResult}
         locationError={locationError}
@@ -71,11 +74,16 @@ const App: React.FC = () => {
       <MapView 
         location={location} 
         onToggleSearch={() => setIsSearchOpen(true)}
+        onToggleProfile={() => setIsProfileOpen(true)}
       />
       <SearchOverlay
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         onSearch={executeSearch}
+      />
+      <ProfileOverlay
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
     </div>
   );
