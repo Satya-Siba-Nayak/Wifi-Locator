@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
+import SearchOverlay from './components/SearchOverlay';
 import { findWifiLocations } from './services/geminiService';
 import type { SearchResult } from './types';
 
@@ -10,6 +11,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -50,16 +52,31 @@ const App: React.FC = () => {
     }
   }, [location]);
 
+  const executeSearch = useCallback((query: string) => {
+    setIsSearchOpen(false);
+    // Delay search slightly to allow overlay to animate out
+    setTimeout(() => handleSearch(query), 150);
+  }, [handleSearch]);
+
   return (
     <div className="flex h-screen w-full font-sans antialiased">
       <Sidebar 
         onSearch={handleSearch}
+        onToggleSearch={() => setIsSearchOpen(true)}
         loading={loading}
         result={searchResult}
         locationError={locationError}
         apiError={apiError}
       />
-      <MapView location={location} />
+      <MapView 
+        location={location} 
+        onToggleSearch={() => setIsSearchOpen(true)}
+      />
+      <SearchOverlay
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSearch={executeSearch}
+      />
     </div>
   );
 };

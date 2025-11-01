@@ -2,14 +2,15 @@ import React from 'react';
 import PlusIcon from './icons/PlusIcon';
 import MinusIcon from './icons/MinusIcon';
 import CompassIcon from './icons/CompassIcon';
-import UserIcon from './icons/UserIcon';
 import MyLocationIcon from './icons/MyLocationIcon';
+import SearchIcon from './icons/SearchIcon';
 
 interface MapViewProps {
   location: { latitude: number; longitude: number; } | null;
+  onToggleSearch: () => void;
 }
 
-const MapView: React.FC<MapViewProps> = ({ location }) => {
+const MapView: React.FC<MapViewProps> = ({ location, onToggleSearch }) => {
   // Use Pune, India as default, inspired by the original image
   const defaultLocation = { latitude: 18.5204, longitude: 73.8567 }; 
   const mapLocation = location || defaultLocation;
@@ -21,7 +22,7 @@ const MapView: React.FC<MapViewProps> = ({ location }) => {
   
   // Add a marker only if we have the user's actual location
   const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}${location ? `&layer=mapnik&marker=${lat},${lon}` : ''}`;
-  
+
   return (
     <main className="flex-grow h-full relative hidden md:block">
       <iframe
@@ -33,17 +34,21 @@ const MapView: React.FC<MapViewProps> = ({ location }) => {
       ></iframe>
 
       <div className="absolute top-4 right-4 z-10">
-          <button className="p-2.5 bg-zinc-900/70 backdrop-blur-md rounded-full shadow-lg border border-zinc-700/50 text-zinc-300 hover:bg-zinc-800/60 transition-colors">
-              <UserIcon />
+          <button 
+            onClick={onToggleSearch}
+            className="p-3 bg-zinc-900/70 backdrop-blur-md rounded-full shadow-lg border border-zinc-700/50 text-zinc-300 hover:bg-zinc-800/60 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" 
+            aria-label="Search locations"
+          >
+              <SearchIcon />
           </button>
       </div>
       
       <div className="absolute top-20 right-4 flex flex-col items-center space-y-2">
          <div className="bg-zinc-900/70 backdrop-blur-md rounded-xl shadow-lg border border-zinc-700/50 text-zinc-300">
-             <button className="p-2.5 hover:bg-zinc-800/60 rounded-t-xl transition-colors border-b border-zinc-700/80">
+             <button className="p-2.5 hover:bg-zinc-800/60 rounded-t-xl transition-colors border-b border-zinc-700/80" aria-label="Center on my location">
                 <MyLocationIcon />
              </button>
-             <button className="p-2.5 hover:bg-zinc-800/60 rounded-b-xl transition-colors">
+             <button className="p-2.5 hover:bg-zinc-800/60 rounded-b-xl transition-colors" aria-label="Reset map orientation">
                  <CompassIcon />
              </button>
          </div>
@@ -51,10 +56,10 @@ const MapView: React.FC<MapViewProps> = ({ location }) => {
 
       <div className="absolute bottom-4 right-4 flex flex-col items-center">
          <div className="bg-zinc-900/70 backdrop-blur-md rounded-xl shadow-lg border border-zinc-700/50 text-zinc-300">
-             <button className="p-2.5 hover:bg-zinc-800/60 rounded-t-xl transition-colors border-b border-zinc-700/80">
+             <button className="p-2.5 hover:bg-zinc-800/60 rounded-t-xl transition-colors border-b border-zinc-700/80" aria-label="Zoom in">
                  <PlusIcon />
              </button>
-             <button className="p-2.5 hover:bg-zinc-800/60 rounded-b-xl transition-colors">
+             <button className="p-2.5 hover:bg-zinc-800/60 rounded-b-xl transition-colors" aria-label="Zoom out">
                  <MinusIcon />
              </button>
          </div>
