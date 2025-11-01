@@ -1,0 +1,7 @@
+{
+  "name": "Wi-Fi Locator",
+  "description": "Find the best Wi-Fi hotspots near you. Styled with a sleek, dark theme inspired by modern map applications.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
