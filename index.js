@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isLoading = false;
 
     // --- DOM ELEMENTS ---
+    const sidebar = document.getElementById('sidebar');
     const sidebarContent = document.getElementById('sidebar-content');
     const mapIframe = document.getElementById('map-iframe');
     
@@ -12,7 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchOverlay = document.getElementById('search-overlay');
     const profileOverlay = document.getElementById('profile-overlay');
 
-    // Overlay Buttons
+    // Sidebar/Overlay Buttons
+    const menuButtonMap = document.getElementById('menu-button-map');
+    const closeSidebarButton = document.getElementById('close-sidebar-button');
     const openSearchMapBtn = document.getElementById('search-button-map');
     const openProfileMapBtn = document.getElementById('profile-button-map');
     const closeSearchBtn = document.getElementById('close-search-overlay');
@@ -26,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Profile
     const loginTab = document.getElementById('login-tab');
     const signupTab = document.getElementById('signup-tab');
+    const segmentedControlBg = document.getElementById('segmented-control-bg');
     const nameField = document.getElementById('name-field');
     const authSubmitBtn = document.getElementById('auth-submit-button');
     const authForm = document.getElementById('auth-form');
@@ -97,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div><h3 class="font-semibold text-gray-100">${place.title}</h3></div>
                 </div>
                 <a href="${place.uri}" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-full text-zinc-400 group-hover:text-blue-400 group-hover:bg-zinc-600/50 transition-colors" aria-label="Open in Maps">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002 2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </a>
             </div>
             ${(place.placeAnswerSources?.reviewSnippets || []).slice(0, 2).map(snippet => `
@@ -151,14 +155,14 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
         
         document.querySelectorAll('.filter-pill, .featured-place').forEach(el => {
-            el.addEventListener('click', (e) => handleSearch(e.currentTarget.dataset.query));
+            el.addEventListener('click', (e) => executeSearch(e.currentTarget.dataset.query));
         });
     };
     
     const renderSearchRecommendations = () => {
         const container = searchRecommendations.querySelector('div');
         container.innerHTML = recommendationPills.map(rec => 
-            `<button data-query="${rec}" class="rec-pill bg-zinc-800 text-zinc-200 px-4 py-2 rounded-lg text-sm hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">${rec}</button>`
+            `<button data-query="${rec}" class="rec-pill bg-zinc-800 text-zinc-200 px-4 py-2 rounded-full text-sm hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">${rec}</button>`
         ).join('');
         document.querySelectorAll('.rec-pill').forEach(el => {
             el.addEventListener('click', (e) => {
@@ -178,6 +182,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             overlay.classList.add('opacity-0', 'pointer-events-none');
             overlay.setAttribute('aria-hidden', 'true');
+        }
+    };
+
+    const toggleSidebar = (show) => {
+        if (show) {
+            sidebar.classList.remove('-translate-x-full');
+        } else {
+            sidebar.classList.add('-translate-x-full');
         }
     };
 
@@ -209,8 +221,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const executeSearch = (query) => {
+        if (window.innerWidth < 768) { // Tailwind's 'md' breakpoint
+            toggleSidebar(false);
+        }
         toggleOverlay(searchOverlay, false);
-        setTimeout(() => handleSearch(query), 150);
+        // Add a small delay for sidebar animation to complete before starting search
+        setTimeout(() => handleSearch(query), 300);
     };
 
     // --- INITIALIZATION & EVENT LISTENERS ---
@@ -240,7 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderInitialView();
     }
     
-    // Overlay toggles
+    // Sidebar and Overlay toggles
+    menuButtonMap.addEventListener('click', () => toggleSidebar(true));
+    closeSidebarButton.addEventListener('click', () => toggleSidebar(false));
     [openSearchMapBtn, closeSearchBtn].forEach(el => el.addEventListener('click', () => toggleOverlay(searchOverlay, !searchOverlay.classList.contains('opacity-0'))));
     [openProfileMapBtn, closeProfileBtn].forEach(el => el.addEventListener('click', () => toggleOverlay(profileOverlay, !profileOverlay.classList.contains('opacity-0'))));
 
@@ -259,22 +277,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Profile form
+    // Profile form segmented control
     loginTab.addEventListener('click', () => {
-        loginTab.classList.add('bg-blue-600', 'text-white');
-        loginTab.classList.remove('text-zinc-300', 'hover:bg-zinc-800');
-        signupTab.classList.remove('bg-blue-600', 'text-white');
-        signupTab.classList.add('text-zinc-300', 'hover:bg-zinc-800');
+        segmentedControlBg.style.transform = 'translateX(0%)';
+        loginTab.classList.remove('text-zinc-400');
+        loginTab.classList.add('text-zinc-100');
+        signupTab.classList.add('text-zinc-400');
+        signupTab.classList.remove('text-zinc-100');
         nameField.classList.add('hidden');
         nameField.querySelector('input').required = false;
-        authSubmitBtn.textContent = 'Login';
+        authSubmitBtn.textContent = 'Sign In';
     });
 
     signupTab.addEventListener('click', () => {
-        signupTab.classList.add('bg-blue-600', 'text-white');
-        signupTab.classList.remove('text-zinc-300', 'hover:bg-zinc-800');
-        loginTab.classList.remove('bg-blue-600', 'text-white');
-        loginTab.classList.add('text-zinc-300', 'hover:bg-zinc-800');
+        segmentedControlBg.style.transform = 'translateX(100%)';
+        signupTab.classList.remove('text-zinc-400');
+        signupTab.classList.add('text-zinc-100');
+        loginTab.classList.add('text-zinc-400');
+        loginTab.classList.remove('text-zinc-100');
         nameField.classList.remove('hidden');
         nameField.querySelector('input').required = true;
         authSubmitBtn.textContent = 'Create Account';
