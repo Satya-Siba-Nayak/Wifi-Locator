@@ -1,97 +1,151 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
+  // --- STATE ---
+  let currentUserLocation = null;
+  let isLoading = false;
+  let map = null; // Leaflet map instance
+  let userMarker = null; // User location marker
+  let isShowingResults = false; // Track if showing search results
 
-    // --- STATE ---
-    let currentUserLocation = null;
-    let isLoading = false;
+  // --- DOM ELEMENTS ---
+  const sidebar = document.getElementById("sidebar");
+  const sidebarContent = document.getElementById("sidebar-content");
+  const backButton = document.getElementById("back-button");
 
-    // --- DOM ELEMENTS ---
-    const sidebar = document.getElementById('sidebar');
-    const sidebarContent = document.getElementById('sidebar-content');
-    const mapIframe = document.getElementById('map-iframe');
-    
-    // Overlays
-    const searchOverlay = document.getElementById('search-overlay');
-    const profileOverlay = document.getElementById('profile-overlay');
+  // Overlays
+  const searchOverlay = document.getElementById("search-overlay");
+  const profileOverlay = document.getElementById("profile-overlay");
+  const contributeOverlay = document.getElementById("contribute-overlay");
 
-    // Sidebar/Overlay Buttons
-    const menuButtonMap = document.getElementById('menu-button-map');
-    const closeSidebarButton = document.getElementById('close-sidebar-button');
-    const openSearchMapBtn = document.getElementById('search-button-map');
-    const openProfileMapBtn = document.getElementById('profile-button-map');
-    const closeSearchBtn = document.getElementById('close-search-overlay');
-    const closeProfileBtn = document.getElementById('close-profile-overlay');
-    
-    // Search
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('search-input');
-    const searchRecommendations = document.getElementById('search-recommendations');
+  // Sidebar/Overlay Buttons
+  const menuButtonMap = document.getElementById("menu-button-map");
+  const closeSidebarButton = document.getElementById("close-sidebar-button");
+  const openSearchMapBtn = document.getElementById("search-button-map");
+  const openProfileMapBtn = document.getElementById("profile-button-map");
+  const closeSearchBtn = document.getElementById("close-search-overlay");
+  const closeProfileBtn = document.getElementById("close-profile-overlay");
+  const contributeBtn = document.getElementById("contribute-button");
+  const closeContributeBtn = document.getElementById(
+    "close-contribute-overlay",
+  );
+  const contributeCancelBtn = document.getElementById("contribute-cancel");
 
-    // Profile
-    const loginTab = document.getElementById('login-tab');
-    const signupTab = document.getElementById('signup-tab');
-    const segmentedControlBg = document.getElementById('segmented-control-bg');
-    const nameField = document.getElementById('name-field');
-    const authSubmitBtn = document.getElementById('auth-submit-button');
-    const authForm = document.getElementById('auth-form');
+  // Search
+  const searchForm = document.getElementById("search-form");
+  const searchInput = document.getElementById("search-input");
+  const searchRecommendations = document.getElementById(
+    "search-recommendations",
+  );
 
-    // Map actions
-    const recenterMapButton = document.getElementById('recenter-map-button');
+  // Profile
+  const loginTab = document.getElementById("login-tab");
+  const signupTab = document.getElementById("signup-tab");
+  const segmentedControlBg = document.getElementById("segmented-control-bg");
+  const nameField = document.getElementById("name-field");
+  const authSubmitBtn = document.getElementById("auth-submit-button");
+  const authForm = document.getElementById("auth-form");
 
-    // --- CONSTANTS ---
-    const filterPills = ['Coffee Shops', 'Libraries', 'Coworking', 'Free Wi-Fi', 'Quiet Places'];
-    const featuredPlaces = [
-        { name: 'Artisan Roast Cafe', query: 'Artisan Roast Cafe with wifi', category: 'Coffee Shop', image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=500&auto=format&fit=crop' },
-        { name: 'Central City Library', query: 'Central City Library with free wifi', category: 'Library', image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=500&auto=format&fit=crop' },
-        { name: 'Innovate Coworking Hub', query: 'Innovate Coworking Hub with power outlets', category: 'Coworking Space', image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop' }
-    ];
-    const recommendationPills = ['Quiet cafes with fast Wi-Fi', 'Places to work with power outlets', '24/7 study spots', 'Libraries with free internet', 'Coffee shops nearby'];
-    
-    const MOCK_PLACES = [
-        {
-            maps: {
-                title: 'The Daily Grind',
-                uri: 'https://www.openstreetmap.org/',
-                placeAnswerSources: {
-                    reviewSnippets: [
-                        { text: 'Great coffee and reliable Wi-Fi for working.', author: 'Jane D.' },
-                        { text: 'Can get a bit crowded, but the atmosphere is nice.', author: 'John S.' }
-                    ]
-                }
-            }
+  // Contribute
+  const contributeForm = document.getElementById("contribute-form");
+
+  // Map actions
+  const recenterMapButton = document.getElementById("recenter-map-button");
+
+  // --- CONSTANTS ---
+  const filterPills = [
+    "Coffee Shops",
+    "Libraries",
+    "Coworking",
+    "Free Wi-Fi",
+    "Quiet Places",
+  ];
+  const featuredPlaces = [
+    {
+      name: "Artisan Roast Cafe",
+      query: "Artisan Roast Cafe with wifi",
+      category: "Coffee Shop",
+      image:
+        "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=500&auto=format&fit=crop",
+    },
+    {
+      name: "Central City Library",
+      query: "Central City Library with free wifi",
+      category: "Library",
+      image:
+        "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=500&auto=format&fit=crop",
+    },
+    {
+      name: "Innovate Coworking Hub",
+      query: "Innovate Coworking Hub with power outlets",
+      category: "Coworking Space",
+      image:
+        "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop",
+    },
+  ];
+  const recommendationPills = [
+    "Quiet cafes with fast Wi-Fi",
+    "Places to work with power outlets",
+    "24/7 study spots",
+    "Libraries with free internet",
+    "Coffee shops nearby",
+  ];
+
+  const MOCK_PLACES = [
+    {
+      maps: {
+        title: "The Daily Grind",
+        uri: "https://www.openstreetmap.org/",
+        placeAnswerSources: {
+          reviewSnippets: [
+            {
+              text: "Great coffee and reliable Wi-Fi for working.",
+              author: "Jane D.",
+            },
+            {
+              text: "Can get a bit crowded, but the atmosphere is nice.",
+              author: "John S.",
+            },
+          ],
         },
-        {
-            maps: {
-                title: 'City Central Library',
-                uri: 'https://www.openstreetmap.org/',
-                placeAnswerSources: {
-                    reviewSnippets: [
-                        { text: 'Very quiet and the internet is super fast and free.', author: 'Alice W.' }
-                    ]
-                }
-            }
+      },
+    },
+    {
+      maps: {
+        title: "City Central Library",
+        uri: "https://www.openstreetmap.org/",
+        placeAnswerSources: {
+          reviewSnippets: [
+            {
+              text: "Very quiet and the internet is super fast and free.",
+              author: "Alice W.",
+            },
+          ],
         },
-        {
-            maps: {
-                title: 'Co-Work & Create',
-                uri: 'https://www.openstreetmap.org/',
-                placeAnswerSources: {
-                    reviewSnippets: []
-                }
-            }
-        }
-    ];
+      },
+    },
+    {
+      maps: {
+        title: "Co-Work & Create",
+        uri: "https://www.openstreetmap.org/",
+        placeAnswerSources: {
+          reviewSnippets: [],
+        },
+      },
+    },
+  ];
 
-    // --- RENDERING ---
-    const renderSpinner = () => `
+  // --- RENDERING ---
+  const renderSpinner = () => `
         <div class="flex flex-col items-center justify-center h-full space-y-2">
             <svg class="animate-spin h-8 w-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             <p class="text-zinc-400">Searching...</p>
         </div>`;
-    
-    const renderError = (message) => `<div class="text-red-400 bg-red-900/30 p-3 rounded-lg">${message}</div>`;
-    const renderApiError = (message) => `<div class="text-yellow-400 bg-yellow-900/30 p-3 rounded-lg">${message}</div>`;
 
-    const renderLocationCard = (place) => `
+  const renderError = (message) =>
+    `<div class="text-red-400 bg-red-900/30 p-3 rounded-lg">${message}</div>`;
+  const renderApiError = (message) =>
+    `<div class="text-yellow-400 bg-yellow-900/30 p-3 rounded-lg">${message}</div>`;
+
+  const renderLocationCard = (place) => `
         <div class="bg-zinc-800 p-4 rounded-xl border border-zinc-700/80 hover:border-zinc-600 hover:bg-zinc-700/50 transition-all group">
             <div class="flex justify-between items-start">
                 <div class="flex items-start space-x-3">
@@ -104,34 +158,52 @@ document.addEventListener('DOMContentLoaded', () => {
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002 2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </a>
             </div>
-            ${(place.placeAnswerSources?.reviewSnippets || []).slice(0, 2).map(snippet => `
+            ${(place.placeAnswerSources?.reviewSnippets || [])
+              .slice(0, 2)
+              .map(
+                (snippet) => `
                 <div class="mt-3 pl-8 border-l-2 border-zinc-600 pl-3">
                     <p class="text-sm text-zinc-300 italic">"${snippet.text}"</p>
                     <p class="text-xs text-zinc-400 text-right mt-1">- ${snippet.author}</p>
                 </div>
-            `).join('')}
+            `,
+              )
+              .join("")}
         </div>`;
 
-    const renderResults = (result) => {
-        let html = '<div class="space-y-4">';
-        if (result.summary) {
-            html += `<div class="bg-zinc-800 p-4 rounded-xl"><p class="text-zinc-300">${result.summary}</p></div>`;
-        }
-        if (result.places.length > 0) {
-            html += result.places.map(place => renderLocationCard(place.maps)).join('');
-        } else {
-            html += `<div class="text-center text-zinc-400 p-4"><p>No specific places found. Try a different search.</p></div>`;
-        }
-        html += '</div>';
-        sidebarContent.innerHTML = html;
-    };
+  const renderResults = (result) => {
+    isShowingResults = true;
+    backButton.classList.remove("hidden");
 
-    const renderInitialView = () => {
-        const filtersHTML = filterPills.map(filter =>
-            `<button data-query="${filter}" class="filter-pill bg-zinc-800 text-zinc-200 px-3 py-1.5 rounded-lg text-sm hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">${filter}</button>`
-        ).join('');
+    let html = '<div class="space-y-4">';
+    if (result.summary) {
+      html += `<div class="bg-zinc-800 p-4 rounded-xl"><p class="text-zinc-300">${result.summary}</p></div>`;
+    }
+    if (result.places.length > 0) {
+      html += result.places
+        .map((place) => renderLocationCard(place.maps))
+        .join("");
+    } else {
+      html += `<div class="text-center text-zinc-400 p-4"><p>No specific places found. Try a different search.</p></div>`;
+    }
+    html += "</div>";
+    sidebarContent.innerHTML = html;
+  };
 
-        const featuredHTML = featuredPlaces.map(place => `
+  const renderInitialView = () => {
+    isShowingResults = false;
+    backButton.classList.add("hidden");
+
+    const filtersHTML = filterPills
+      .map(
+        (filter) =>
+          `<button data-query="${filter}" class="filter-pill bg-zinc-800 text-zinc-200 px-3 py-1.5 rounded-lg text-sm hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">${filter}</button>`,
+      )
+      .join("");
+
+    const featuredHTML = featuredPlaces
+      .map(
+        (place) => `
             <button data-query="${place.query}" class="featured-place w-full text-left rounded-lg overflow-hidden bg-zinc-800 hover:bg-zinc-700/70 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 group">
                 <div class="relative h-24">
                     <img src="${place.image}" alt="${place.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -140,9 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="p-3"><p class="font-semibold text-zinc-100">${place.name}</p></div>
             </button>
-        `).join('');
+        `,
+      )
+      .join("");
 
-        sidebarContent.innerHTML = `
+    sidebarContent.innerHTML = `
             <div class="space-y-8">
                 <div>
                     <h3 class="text-sm font-semibold text-zinc-400 px-1 mb-3">Quick Filters</h3>
@@ -153,167 +227,327 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="space-y-3">${featuredHTML}</div>
                 </div>
             </div>`;
-        
-        document.querySelectorAll('.filter-pill, .featured-place').forEach(el => {
-            el.addEventListener('click', (e) => executeSearch(e.currentTarget.dataset.query));
-        });
-    };
-    
-    const renderSearchRecommendations = () => {
-        const container = searchRecommendations.querySelector('div');
-        container.innerHTML = recommendationPills.map(rec => 
-            `<button data-query="${rec}" class="rec-pill bg-zinc-800 text-zinc-200 px-4 py-2 rounded-full text-sm hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">${rec}</button>`
-        ).join('');
-        document.querySelectorAll('.rec-pill').forEach(el => {
-            el.addEventListener('click', (e) => {
-                const query = e.currentTarget.dataset.query;
-                searchInput.value = query;
-                executeSearch(query);
-            });
-        });
-    };
 
+    document.querySelectorAll(".filter-pill, .featured-place").forEach((el) => {
+      el.addEventListener("click", (e) =>
+        executeSearch(e.currentTarget.dataset.query),
+      );
+    });
+  };
 
-    // --- LOGIC ---
-    const toggleOverlay = (overlay, show) => {
-        if (show) {
-            overlay.classList.remove('opacity-0', 'pointer-events-none');
-            overlay.setAttribute('aria-hidden', 'false');
-        } else {
-            overlay.classList.add('opacity-0', 'pointer-events-none');
-            overlay.setAttribute('aria-hidden', 'true');
-        }
-    };
+  const renderSearchRecommendations = () => {
+    const container = searchRecommendations.querySelector("div");
+    container.innerHTML = recommendationPills
+      .map(
+        (rec) =>
+          `<button data-query="${rec}" class="rec-pill bg-zinc-800 text-zinc-200 px-4 py-2 rounded-full text-sm hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">${rec}</button>`,
+      )
+      .join("");
+    document.querySelectorAll(".rec-pill").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        const query = e.currentTarget.dataset.query;
+        searchInput.value = query;
+        executeSearch(query);
+      });
+    });
+  };
 
-    const toggleSidebar = (show) => {
-        if (show) {
-            sidebar.classList.remove('-translate-x-full');
-        } else {
-            sidebar.classList.add('-translate-x-full');
-        }
-    };
-
-    const updateMap = (location) => {
-        const { latitude: lat, longitude: lon } = location;
-        const delta = 0.05;
-        const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
-        const markers = `&marker=${lat},${lon}`;
-        mapIframe.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik${markers}`;
-    };
-
-    const handleSearch = (query) => {
-        if (!currentUserLocation) {
-            sidebarContent.innerHTML = renderError("Could not get your location. Please enable location services and try again.");
-            return;
-        }
-        isLoading = true;
-        sidebarContent.innerHTML = renderSpinner();
-        
-        // Simulate a network request with a timeout
-        setTimeout(() => {
-            const mockResult = {
-                summary: `Showing results for "${query}". This is mock data for demonstration.`,
-                places: MOCK_PLACES
-            };
-            renderResults(mockResult);
-            isLoading = false;
-        }, 1000);
-    };
-
-    const executeSearch = (query) => {
-        if (window.innerWidth < 768) { // Tailwind's 'md' breakpoint
-            toggleSidebar(false);
-        }
-        toggleOverlay(searchOverlay, false);
-        // Add a small delay for sidebar animation to complete before starting search
-        setTimeout(() => handleSearch(query), 300);
-    };
-
-    // --- INITIALIZATION & EVENT LISTENERS ---
-    
-    // Geolocation
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                currentUserLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                };
-                updateMap(currentUserLocation);
-                renderInitialView();
-            },
-            (error) => {
-                console.error("Geolocation error:", error);
-                sidebarContent.innerHTML = renderError(`Error: ${error.message}. Please enable location services.`);
-                // Use a default location for the map
-                updateMap({ latitude: 18.5204, longitude: 73.8567 });
-                renderInitialView();
-            }
-        );
+  // --- LOGIC ---
+  const toggleOverlay = (overlay, show) => {
+    if (show) {
+      overlay.classList.remove("opacity-0", "pointer-events-none");
+      overlay.setAttribute("aria-hidden", "false");
     } else {
-        sidebarContent.innerHTML = renderError("Geolocation is not supported by this browser.");
+      overlay.classList.add("opacity-0", "pointer-events-none");
+      overlay.setAttribute("aria-hidden", "true");
+    }
+  };
+
+  const toggleSidebar = (show) => {
+    if (show) {
+      sidebar.classList.remove("-translate-x-full");
+    } else {
+      sidebar.classList.add("-translate-x-full");
+    }
+  };
+
+  // Initialize Leaflet map
+  const initMap = () => {
+    map = L.map("map", {
+      zoomControl: false, // We'll add custom controls
+      attributionControl: true,
+    }).setView([18.5204, 73.8567], 13); // Default to Pune, India
+
+    // Add OpenStreetMap tiles
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Add zoom control to bottom left
+    L.control
+      .zoom({
+        position: "bottomleft",
+      })
+      .addTo(map);
+  };
+
+  const updateMap = (location, zoom = 15) => {
+    if (!map) return;
+
+    const { latitude: lat, longitude: lon } = location;
+
+    // Pan to location
+    map.setView([lat, lon], zoom);
+
+    // Create or update user marker
+    if (userMarker) {
+      userMarker.setLatLng([lat, lon]);
+    } else {
+      // Create custom pulsing marker
+      const pulsingIcon = L.divIcon({
+        className: "custom-user-marker",
+        html: `
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="absolute w-12 h-12 bg-blue-500/30 rounded-full animate-ping"></div>
+            <div class="absolute w-8 h-8 bg-blue-500/40 rounded-full"></div>
+            <div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg"></div>
+          </div>
+        `,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+      });
+
+      userMarker = L.marker([lat, lon], { icon: pulsingIcon }).addTo(map);
+    }
+  };
+
+  const handleSearch = (query) => {
+    if (!currentUserLocation) {
+      sidebarContent.innerHTML = renderError(
+        "Could not get your location. Please enable location services and try again.",
+      );
+      return;
+    }
+    isLoading = true;
+    sidebarContent.innerHTML = renderSpinner();
+
+    // Simulate a network request with a timeout
+    setTimeout(() => {
+      const mockResult = {
+        summary: `Showing results for "${query}". This is mock data for demonstration.`,
+        places: MOCK_PLACES,
+      };
+      renderResults(mockResult);
+      isLoading = false;
+    }, 1000);
+  };
+
+  const executeSearch = (query) => {
+    if (window.innerWidth < 768) {
+      // Tailwind's 'md' breakpoint
+      toggleSidebar(false);
+    }
+    toggleOverlay(searchOverlay, false);
+    // Add a small delay for sidebar animation to complete before starting search
+    setTimeout(() => handleSearch(query), 300);
+  };
+
+  // --- INITIALIZATION & EVENT LISTENERS ---
+
+  // Initialize map first
+  initMap();
+
+  // Show loading state initially
+  sidebarContent.innerHTML = `
+    <div class="flex flex-col items-center justify-center h-full space-y-4">
+      <svg class="animate-spin h-8 w-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p class="text-zinc-400">Requesting location access...</p>
+      <p class="text-xs text-zinc-500">Please allow location permissions when prompted</p>
+    </div>
+  `;
+
+  // Geolocation
+  if (navigator.geolocation) {
+    console.log("Requesting geolocation...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log("Geolocation success:", position.coords);
+        console.log("Latitude:", position.coords.latitude);
+        console.log("Longitude:", position.coords.longitude);
+        console.log("Accuracy:", position.coords.accuracy, "meters");
+
+        currentUserLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+
+        // Show coordinates in sidebar temporarily for debugging
+        sidebarContent.innerHTML = `
+          <div class="space-y-4 p-4">
+            <div class="bg-zinc-800 p-4 rounded-lg">
+              <h3 class="font-semibold text-zinc-100 mb-2">📍 Your Location</h3>
+              <p class="text-sm text-zinc-300">Lat: ${position.coords.latitude.toFixed(6)}</p>
+              <p class="text-sm text-zinc-300">Lon: ${position.coords.longitude.toFixed(6)}</p>
+              <p class="text-sm text-zinc-400 mt-2">Accuracy: ±${Math.round(position.coords.accuracy)}m</p>
+            </div>
+          </div>
+        `;
+
+        updateMap(currentUserLocation);
+
+        // Render initial view after a delay so user can see coordinates
+        setTimeout(() => renderInitialView(), 3000);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        let errorMessage = "";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage =
+              "Location access denied. Please enable location permissions in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage =
+              "Location information unavailable. Please check your device settings.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Please try again.";
+            break;
+          default:
+            errorMessage = `Location error: ${error.message}`;
+        }
+        sidebarContent.innerHTML = renderError(errorMessage);
+        // Use a default location for the map (Pune, India)
         updateMap({ latitude: 18.5204, longitude: 73.8567 });
         renderInitialView();
-    }
-    
-    // Sidebar and Overlay toggles
-    menuButtonMap.addEventListener('click', () => toggleSidebar(true));
-    closeSidebarButton.addEventListener('click', () => toggleSidebar(false));
-    [openSearchMapBtn, closeSearchBtn].forEach(el => el.addEventListener('click', () => toggleOverlay(searchOverlay, !searchOverlay.classList.contains('opacity-0'))));
-    [openProfileMapBtn, closeProfileBtn].forEach(el => el.addEventListener('click', () => toggleOverlay(profileOverlay, !profileOverlay.classList.contains('opacity-0'))));
-
-    searchOverlay.addEventListener('transitionend', () => {
-      if (!searchOverlay.classList.contains('opacity-0')) {
-        searchInput.focus();
-      }
-    });
-
-    // Search form
-    searchForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const query = searchInput.value.trim();
-        if (query) {
-            executeSearch(query);
-        }
-    });
-
-    // Profile form segmented control
-    loginTab.addEventListener('click', () => {
-        segmentedControlBg.style.transform = 'translateX(0%)';
-        loginTab.classList.remove('text-zinc-400');
-        loginTab.classList.add('text-zinc-100');
-        signupTab.classList.add('text-zinc-400');
-        signupTab.classList.remove('text-zinc-100');
-        nameField.classList.add('hidden');
-        nameField.querySelector('input').required = false;
-        authSubmitBtn.textContent = 'Sign In';
-    });
-
-    signupTab.addEventListener('click', () => {
-        segmentedControlBg.style.transform = 'translateX(100%)';
-        signupTab.classList.remove('text-zinc-400');
-        signupTab.classList.add('text-zinc-100');
-        loginTab.classList.add('text-zinc-400');
-        loginTab.classList.remove('text-zinc-100');
-        nameField.classList.remove('hidden');
-        nameField.querySelector('input').required = true;
-        authSubmitBtn.textContent = 'Create Account';
-    });
-    
-    authForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        console.log('Auth form submitted.');
-        toggleOverlay(profileOverlay, false);
-    });
-
-    // Map button
-    recenterMapButton.addEventListener('click', () => {
-        if(currentUserLocation) {
-            updateMap(currentUserLocation);
-        }
-    });
-
-    // Initial Renders
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
+  } else {
+    console.error("Geolocation not supported");
+    sidebarContent.innerHTML = renderError(
+      "Geolocation is not supported by this browser.",
+    );
+    updateMap({ latitude: 18.5204, longitude: 73.8567 });
     renderInitialView();
-    renderSearchRecommendations();
+  }
+
+  // Sidebar and Overlay toggles
+  menuButtonMap.addEventListener("click", () => toggleSidebar(true));
+  closeSidebarButton.addEventListener("click", () => toggleSidebar(false));
+  backButton.addEventListener("click", () => {
+    renderInitialView();
+  });
+  [openSearchMapBtn, closeSearchBtn].forEach((el) =>
+    el.addEventListener("click", () =>
+      toggleOverlay(
+        searchOverlay,
+        searchOverlay.classList.contains("opacity-0"),
+      ),
+    ),
+  );
+  [openProfileMapBtn, closeProfileBtn].forEach((el) =>
+    el.addEventListener("click", () =>
+      toggleOverlay(
+        profileOverlay,
+        profileOverlay.classList.contains("opacity-0"),
+      ),
+    ),
+  );
+  [contributeBtn, closeContributeBtn, contributeCancelBtn].forEach((el) =>
+    el.addEventListener("click", () =>
+      toggleOverlay(
+        contributeOverlay,
+        contributeOverlay.classList.contains("opacity-0"),
+      ),
+    ),
+  );
+
+  searchOverlay.addEventListener("transitionend", () => {
+    if (!searchOverlay.classList.contains("opacity-0")) {
+      searchInput.focus();
+    }
+  });
+
+  // Search form
+  searchForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const query = searchInput.value.trim();
+    if (query) {
+      executeSearch(query);
+    }
+  });
+
+  // Profile form segmented control
+  loginTab.addEventListener("click", () => {
+    segmentedControlBg.style.transform = "translateX(0%)";
+    loginTab.classList.remove("text-zinc-400");
+    loginTab.classList.add("text-zinc-100");
+    signupTab.classList.add("text-zinc-400");
+    signupTab.classList.remove("text-zinc-100");
+    nameField.classList.add("hidden");
+    nameField.querySelector("input").required = false;
+    authSubmitBtn.textContent = "Sign In";
+  });
+
+  signupTab.addEventListener("click", () => {
+    const tabWidth = loginTab.offsetWidth;
+    segmentedControlBg.style.width = `${tabWidth}px`;
+    segmentedControlBg.style.transform = `translateX(${tabWidth}px)`;
+    signupTab.classList.remove("text-zinc-400");
+    signupTab.classList.add("text-zinc-100");
+    loginTab.classList.add("text-zinc-400");
+    loginTab.classList.remove("text-zinc-100");
+    nameField.classList.remove("hidden");
+    nameField.querySelector("input").required = true;
+    authSubmitBtn.textContent = "Create Account";
+  });
+
+  authForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    console.log("Auth form submitted.");
+    toggleOverlay(profileOverlay, false);
+  });
+
+  contributeForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const formData = {
+      name: document.getElementById("place-name").value,
+      location: document.getElementById("place-location").value,
+      wifiType: document.getElementById("wifi-type").value,
+      category: document.querySelector('input[name="category"]:checked')?.value,
+      notes: document.getElementById("place-notes").value,
+      photos: document.getElementById("place-photos").files,
+    };
+    console.log("Contribution submitted:", formData);
+
+    // Show success message (in a real app, you'd send this to a backend)
+    alert(
+      "Thank you for your contribution! Your Wi-Fi hotspot has been submitted for review.",
+    );
+
+    // Reset form and close overlay
+    contributeForm.reset();
+    toggleOverlay(contributeOverlay, false);
+  });
+
+  // Map button - recenter on user location
+  recenterMapButton.addEventListener("click", () => {
+    if (currentUserLocation) {
+      updateMap(currentUserLocation);
+    }
+  });
+
+  // Initial Renders
+  renderInitialView();
+  renderSearchRecommendations();
 });

@@ -2,7 +2,21 @@ body {
     background-color: #18181b; /* Corresponds to Tailwind's bg-zinc-900 */
     color: #ffffff; /* Corresponds to Tailwind's text-white */
     overflow: hidden; /* Corresponds to Tailwind's overflow-hidden */
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; /* font-sans */
+    font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        "Helvetica Neue",
+        Arial,
+        "Noto Sans",
+        sans-serif,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        "Noto Color Emoji"; /* font-sans */
     -webkit-font-smoothing: antialiased; /* antialiased */
     -moz-osx-font-smoothing: grayscale;
 }
@@ -12,3 +26,62 @@ body {
     height: 100vh; /* h-screen */
     width: 100%; /* w-full */
 }
+
+/* Leaflet Dark Theme */
+.leaflet-tile {
+    filter: invert(95%) hue-rotate(180deg) contrast(125%);
+}
+
+.leaflet-container {
+    background-color: #18181b;
+}
+
+/* Reduce Leaflet's z-index so our controls show above */
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-tile-pane {
+    z-index: 1 !important;
+}
+
+.leaflet-overlay-pane {
+    z-index: 2 !important;
+}
+
+.leaflet-marker-pane {
+    z-index: 3 !important;
+}
+
+.leaflet-popup-pane {
+    z-index: 4 !important;
+}
+
+/* Keep Leaflet controls below our UI */
+.leaflet-control-zoom {
+    z-index: 5 !important;
+}
+
+.leaflet-control-attribution {
+    z-index: 5 !important;
+}
+
+/* Keep controls and markers unaffected by dark theme */
+.leaflet-control-zoom,
+.leaflet-control-attribution {
+    filter: invert(95%) hue-rotate(180deg);
+}
+
+/* Custom user location marker */
+.custom-user-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Ensure Tailwind classes work in marker */
+.leaflet-marker-icon * {
+    box-sizing: border-box;
+}
+
+/* Ensure proper z-index stacking order */
+/* Layer 1: Map tiles and markers (z-1 to z-5) */
+/* Layer 2: Map buttons and sidebar (z-1000 to z-1001) */
+/* Layer 3: Full-screen overlays (z-2000) - Search and Profile */
