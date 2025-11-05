@@ -1,10 +1,21 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize Firebase
+  if (window.firebaseAuth && window.firebaseAuth.initializeFirebase) {
+    window.firebaseAuth.initializeFirebase();
+  }
+
+  // Initialize Auth Service
+  if (window.authService) {
+    window.authService.initialize();
+  }
+
   // --- STATE ---
   let currentUserLocation = null;
   let isLoading = false;
   let map = null; // Leaflet map instance
   let userMarker = null; // User location marker
   let isShowingResults = false; // Track if showing search results
+  let currentAuthMode = "login"; // Track current auth mode: 'login' or 'signup'
 
   // --- DOM ELEMENTS ---
   const sidebar = document.getElementById("sidebar");
@@ -43,6 +54,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const nameField = document.getElementById("name-field");
   const authSubmitBtn = document.getElementById("auth-submit-button");
   const authForm = document.getElementById("auth-form");
+  const googleSigninBtn = document.getElementById("google-signin-button");
+  const signoutBtn = document.getElementById("signout-button");
+  const userInfoDiv = document.getElementById("user-info");
+  const authErrorMsg = document.getElementById("auth-error-message");
+  const authSuccessMsg = document.getElementById("auth-success-message");
 
   // Contribute
   const contributeForm = document.getElementById("contribute-form");
@@ -489,6 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Profile form segmented control
   loginTab.addEventListener("click", () => {
+    currentAuthMode = "login";
     segmentedControlBg.style.transform = "translateX(0%)";
     loginTab.classList.remove("text-zinc-400");
     loginTab.classList.add("text-zinc-100");
@@ -497,9 +514,13 @@ document.addEventListener("DOMContentLoaded", () => {
     nameField.classList.add("hidden");
     nameField.querySelector("input").required = false;
     authSubmitBtn.textContent = "Sign In";
+    // Clear error messages
+    if (authErrorMsg) authErrorMsg.classList.add("hidden");
+    if (authSuccessMsg) authSuccessMsg.classList.add("hidden");
   });
 
   signupTab.addEventListener("click", () => {
+    currentAuthMode = "signup";
     const tabWidth = loginTab.offsetWidth;
     segmentedControlBg.style.width = `${tabWidth}px`;
     segmentedControlBg.style.transform = `translateX(${tabWidth}px)`;
@@ -510,13 +531,136 @@ document.addEventListener("DOMContentLoaded", () => {
     nameField.classList.remove("hidden");
     nameField.querySelector("input").required = true;
     authSubmitBtn.textContent = "Create Account";
+    // Clear error messages
+    if (authErrorMsg) authErrorMsg.classList.add("hidden");
+    if (authSuccessMsg) authSuccessMsg.classList.add("hidden");
   });
 
-  authForm.addEventListener("submit", (e) => {
+  // Auth form submission (Email/Password)
+  authForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    console.log("Auth form submitted.");
-    toggleOverlay(profileOverlay, false);
+
+    if (!window.authService) {
+      console.error("Auth service not initialized");
+      return;
+    }
+
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const name = document.getElementById("name").value;
+
+    // Disable submit button and show loading state
+    authSubmitBtn.disabled = true;
+    const originalText = authSubmitBtn.textContent;
+    authSubmitBtn.textContent = "Please wait...";
+
+    try {
+      let result;
+      if (currentAuthMode === "signup") {
+        result = await window.authService.signUp(email, password, name);
+      } else {
+        result = await window.authService.signIn(email, password);
+      }
+
+      if (result.success) {
+        window.authService.showSuccess(
+          currentAuthMode === "signup"
+            ? "Account created successfully!"
+            : "Signed in successfully!",
+        );
+        authForm.reset();
+        // Close overlay after a short delay
+        setTimeout(() => {
+          toggleOverlay(profileOverlay, false);
+        }, 1500);
+      } else {
+        window.authService.showError(result.error);
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+      window.authService.showError(
+        "An unexpected error occurred. Please try again.",
+      );
+    } finally {
+      // Re-enable submit button
+      authSubmitBtn.disabled = false;
+      authSubmitBtn.textContent = originalText;
+    }
   });
+
+  // Google Sign-In
+  if (googleSigninBtn) {
+    googleSigninBtn.addEventListener("click", async () => {
+      if (!window.authService) {
+        console.error("Auth service not initialized");
+        return;
+      }
+
+      // Disable button and show loading state
+      googleSigninBtn.disabled = true;
+      const originalHTML = googleSigninBtn.innerHTML;
+      googleSigninBtn.innerHTML = "<span>Signing in...</span>";
+
+      try {
+        const result = await window.authService.signInWithGoogle();
+
+        if (result.success) {
+          window.authService.showSuccess("Signed in with Google successfully!");
+          // Close overlay after a short delay
+          setTimeout(() => {
+            toggleOverlay(profileOverlay, false);
+          }, 1500);
+        } else {
+          window.authService.showError(result.error);
+        }
+      } catch (error) {
+        console.error("Google sign-in error:", error);
+        window.authService.showError(
+          "Failed to sign in with Google. Please try again.",
+        );
+      } finally {
+        // Re-enable button
+        googleSigninBtn.disabled = false;
+        googleSigninBtn.innerHTML = originalHTML;
+      }
+    });
+  }
+
+  // Sign Out
+  if (signoutBtn) {
+    signoutBtn.addEventListener("click", async () => {
+      if (!window.authService) {
+        console.error("Auth service not initialized");
+        return;
+      }
+
+      // Disable button and show loading state
+      signoutBtn.disabled = true;
+      const originalText = signoutBtn.textContent;
+      signoutBtn.textContent = "Signing out...";
+
+      try {
+        const result = await window.authService.signOut();
+
+        if (result.success) {
+          window.authService.showSuccess("Signed out successfully!");
+          // Close overlay after a short delay
+          setTimeout(() => {
+            toggleOverlay(profileOverlay, false);
+          }, 1500);
+        } else {
+          window.authService.showError(result.error);
+        }
+      } catch (error) {
+        console.error("Sign out error:", error);
+        window.authService.showError("Failed to sign out. Please try again.");
+      } finally {
+        // Re-enable button
+        signoutBtn.disabled = false;
+        signoutBtn.textContent = originalText;
+      }
+    });
+  }
 
   contributeForm.addEventListener("submit", (e) => {
     e.preventDefault();
