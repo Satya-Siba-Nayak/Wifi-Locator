@@ -1,13 +1,28 @@
-document.addEventListener("DOMContentLoaded", () => {
-  // Initialize Firebase
-  if (window.firebaseAuth && window.firebaseAuth.initializeFirebase) {
-    window.firebaseAuth.initializeFirebase();
-  }
+// Wait for Supabase to be fully loaded
+const waitForSupabase = () => {
+  return new Promise((resolve) => {
+    const checkInterval = setInterval(() => {
+      if (window.supabase && window.authService && window.dbService) {
+        clearInterval(checkInterval);
+        window.authService.initialize();
+        window.dbService.initialize();
+        resolve();
+      }
+    }, 100);
 
-  // Initialize Auth Service
-  if (window.authService) {
-    window.authService.initialize();
-  }
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      console.warn("Supabase initialization timeout");
+      resolve();
+    }, 5000);
+  });
+};
+
+document.addEventListener("DOMContentLoaded", async () => {
+  // Wait for Supabase to initialize
+  await waitForSupabase();
+  console.log("All services initialized");
 
   // --- STATE ---
   let currentUserLocation = null;
