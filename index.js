@@ -24,6 +24,57 @@ document.addEventListener("DOMContentLoaded", async () => {
   await waitForSupabase();
   console.log("All services initialized");
 
+  // Initialize Plus Code API wrapper
+  window.PlusCodeAPI = {
+    encode: (lat, lng) => {
+      try {
+        if (typeof OpenLocationCode !== "undefined") {
+          const olc = new OpenLocationCode();
+          return olc.encode(lat, lng);
+        } else if (window.OpenLocationCode) {
+          return window.OpenLocationCode.encode(lat, lng);
+        }
+        throw new Error("OpenLocationCode library not loaded");
+      } catch (e) {
+        console.error("Plus Code encode error:", e);
+        throw e;
+      }
+    },
+    decode: (code) => {
+      try {
+        if (typeof OpenLocationCode !== "undefined") {
+          const olc = new OpenLocationCode();
+          return olc.decode(code);
+        } else if (window.OpenLocationCode) {
+          return window.OpenLocationCode.decode(code);
+        }
+        throw new Error("OpenLocationCode library not loaded");
+      } catch (e) {
+        console.error("Plus Code decode error:", e);
+        throw e;
+      }
+    },
+    isValid: (code) => {
+      try {
+        if (typeof OpenLocationCode !== "undefined") {
+          const olc = new OpenLocationCode();
+          return olc.isValid(code);
+        } else if (window.OpenLocationCode) {
+          return window.OpenLocationCode.isValid(code);
+        }
+        throw new Error("OpenLocationCode library not loaded");
+      } catch (e) {
+        console.error("Plus Code validation error:", e);
+        return false;
+      }
+    },
+  };
+
+  console.log(
+    "Plus Code API initialized:",
+    typeof OpenLocationCode !== "undefined" || !!window.OpenLocationCode,
+  );
+
   // --- STATE ---
   let currentUserLocation = null;
   let isLoading = false;
@@ -822,7 +873,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const lng = parseFloat(lngInput.value);
       if (!isNaN(lat) && !isNaN(lng)) {
         try {
-          const plusCode = window.OpenLocationCode.encode(lat, lng);
+          const plusCode = window.PlusCodeAPI.encode(lat, lng);
           plusCodeInput.value = plusCode;
         } catch (e) {
           console.error("Error converting to Plus Code:", e);
@@ -847,7 +898,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       // Convert to Plus Code and fill
       try {
-        const plusCode = window.OpenLocationCode.encode(
+        const plusCode = window.PlusCodeAPI.encode(
           currentUserLocation.latitude,
           currentUserLocation.longitude,
         );
@@ -898,12 +949,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       try {
         // Validate using Open Location Code library
-        if (
-          window.OpenLocationCode &&
-          window.OpenLocationCode.isValid(plusCode)
-        ) {
+        if (window.PlusCodeAPI && window.PlusCodeAPI.isValid(plusCode)) {
           // Decode Plus Code to lat/lng for database storage
-          const codeArea = window.OpenLocationCode.decode(plusCode);
+          const codeArea = window.PlusCodeAPI.decode(plusCode);
           const lat = codeArea.latitudeCenter;
           const lng = codeArea.longitudeCenter;
 
