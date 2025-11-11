@@ -322,6 +322,101 @@ document.addEventListener("DOMContentLoaded", async () => {
         position: "bottomleft",
       })
       .addTo(map);
+
+    // Load existing hotspots from database
+    loadHotspots();
+  };
+
+  // Load and display hotspots from database
+  const loadHotspots = async () => {
+    try {
+      const result = await window.dbService.getLiveHotspots();
+
+      if (result.success && result.data) {
+        console.log(`Loaded ${result.data.length} hotspots from database`);
+
+        result.data.forEach((hotspot) => {
+          if (hotspot.latitude && hotspot.longitude) {
+            // Create custom marker for hotspot
+            const marker = L.marker([hotspot.latitude, hotspot.longitude], {
+              icon: L.divIcon({
+                className: "custom-marker",
+                html: `<div class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg transition-colors cursor-pointer border-2 border-white">📶</div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+              }),
+            }).addTo(map);
+
+            // Get creator info (username or email)
+            const creatorName =
+              hotspot.created_by_username ||
+              hotspot.created_by_email ||
+              "Anonymous";
+
+            // Create popup with hotspot info
+            const popupContent = `
+              <div class="p-3 min-w-[200px]">
+                <h3 class="font-bold text-lg text-zinc-900 mb-1">${hotspot.name || "Wi-Fi Hotspot"}</h3>
+                ${hotspot.address_text ? `<p class="text-sm text-zinc-600 mb-2">📍 ${hotspot.address_text}</p>` : ""}
+
+                <div class="space-y-1 text-xs text-zinc-700">
+                  ${hotspot.avg_speed_score ? `<p>⚡ Speed: ${getSpeedLabel(hotspot.avg_speed_score)}</p>` : ""}
+                  ${hotspot.noise_level ? `<p>🔊 Noise: ${hotspot.noise_level}</p>` : ""}
+                  ${hotspot.security_rating ? `<p>🔒 Security: ${hotspot.security_rating}</p>` : ""}
+                </div>
+
+                <div class="mt-3 pt-2 border-t border-zinc-200">
+                  <p class="text-xs text-zinc-500">Added by: <span class="font-medium">${creatorName}</span></p>
+                  ${hotspot.created_at ? `<p class="text-xs text-zinc-400">${formatDate(hotspot.created_at)}</p>` : ""}
+                </div>
+
+                <button class="mt-3 w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors" onclick="viewHotspotDetails(${hotspot.id})">
+                  View Details
+                </button>
+              </div>
+            `;
+
+            marker.bindPopup(popupContent, {
+              maxWidth: 300,
+              className: "custom-popup",
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error loading hotspots:", error);
+    }
+  };
+
+  // Helper function to convert speed score to label
+  const getSpeedLabel = (score) => {
+    if (score >= 4) return "Gaming/High ⚡⚡⚡";
+    if (score >= 3) return "Streaming ⚡⚡";
+    if (score >= 2) return "Browsing ⚡";
+    if (score >= 1) return "Email Only";
+    return "No Signal";
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Global function to view hotspot details (called from popup)
+  window.viewHotspotDetails = (hotspotId) => {
+    console.log("View details for hotspot:", hotspotId);
+    // TODO: Implement detailed view in sidebar
+    alert(
+      `Viewing details for hotspot #${hotspotId}. Full details view coming soon!`,
+    );
   };
 
   const updateMap = (location, zoom = 15) => {
@@ -677,26 +772,251 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  contributeForm.addEventListener("submit", (e) => {
+  // Coordinate input handling
+  const gpsTab = document.getElementById("gps-tab");
+  const pluscodeTab = document.getElementById("pluscode-tab");
+  const autoDetectBtn = document.getElementById("auto-detect-btn");
+  const gpsInputContainer = document.getElementById("gps-input-container");
+  const pluscodeInputContainer = document.getElementById(
+    "pluscode-input-container",
+  );
+  const latInput = document.getElementById("latitude");
+  const lngInput = document.getElementById("longitude");
+  const plusCodeInput = document.getElementById("plus-code");
+  const gpsHelper = document.getElementById("gps-helper");
+  const pluscodeHelper = document.getElementById("pluscode-helper");
+  const coordPreview = document.getElementById("coord-preview");
+  const coordPreviewText = document.getElementById("coord-preview-text");
+
+  let currentCoordMode = "gps"; // "gps" or "pluscode"
+  let validatedCoords = null;
+
+  // Tab switching
+  gpsTab.addEventListener("click", () => {
+    currentCoordMode = "gps";
+    gpsTab.classList.remove("bg-zinc-800", "text-zinc-300");
+    gpsTab.classList.add("bg-blue-600", "text-white");
+    pluscodeTab.classList.add("bg-zinc-800", "text-zinc-300");
+    pluscodeTab.classList.remove("bg-blue-600", "text-white");
+    gpsInputContainer.classList.remove("hidden");
+    pluscodeInputContainer.classList.add("hidden");
+    gpsHelper.classList.remove("hidden");
+    pluscodeHelper.classList.add("hidden");
+    validateCoordinates();
+  });
+
+  pluscodeTab.addEventListener("click", () => {
+    currentCoordMode = "pluscode";
+    pluscodeTab.classList.remove("bg-zinc-800", "text-zinc-300");
+    pluscodeTab.classList.add("bg-blue-600", "text-white");
+    gpsTab.classList.add("bg-zinc-800", "text-zinc-300");
+    gpsTab.classList.remove("bg-blue-600", "text-white");
+    pluscodeInputContainer.classList.remove("hidden");
+    gpsInputContainer.classList.add("hidden");
+    pluscodeHelper.classList.remove("hidden");
+    gpsHelper.classList.add("hidden");
+    validateCoordinates();
+  });
+
+  // Auto-detect location
+  autoDetectBtn.addEventListener("click", () => {
+    if (!currentUserLocation) {
+      alert("Location not available. Please allow location access.");
+      return;
+    }
+    latInput.value = currentUserLocation.latitude.toFixed(6);
+    lngInput.value = currentUserLocation.longitude.toFixed(6);
+    validateCoordinates();
+    autoDetectBtn.classList.add("bg-green-600", "text-white");
+    setTimeout(() => {
+      autoDetectBtn.classList.remove("bg-green-600", "text-white");
+    }, 1000);
+  });
+
+  // Validate coordinates on input
+  latInput.addEventListener("input", validateCoordinates);
+  lngInput.addEventListener("input", validateCoordinates);
+  plusCodeInput.addEventListener("input", validateCoordinates);
+
+  function validateCoordinates() {
+    if (currentCoordMode === "gps") {
+      const lat = parseFloat(latInput.value);
+      const lng = parseFloat(lngInput.value);
+
+      if (
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180
+      ) {
+        validatedCoords = { latitude: lat, longitude: lng };
+        coordPreview.classList.remove("hidden");
+        coordPreviewText.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      } else {
+        validatedCoords = null;
+        coordPreview.classList.add("hidden");
+      }
+    } else {
+      const plusCode = plusCodeInput.value.trim();
+      // Basic Plus Code validation (format: 8FW4V75V+8Q)
+      if (
+        plusCode.match(
+          /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}$/i,
+        )
+      ) {
+        // Note: Real conversion requires the Open Location Code library
+        // For now, we'll just validate the format
+        validatedCoords = { plusCode: plusCode.toUpperCase() };
+        coordPreview.classList.remove("hidden");
+        coordPreviewText.textContent = plusCode.toUpperCase();
+      } else {
+        validatedCoords = null;
+        coordPreview.classList.add("hidden");
+      }
+    }
+  }
+
+  // Photo preview handling
+  const photoInput = document.getElementById("place-photos");
+  const photoPreviewsContainer = document.getElementById("photo-previews");
+  let selectedPhotos = [];
+
+  photoInput.addEventListener("change", (e) => {
+    const files = Array.from(e.target.files);
+
+    // Limit to 5 photos
+    if (files.length > 5) {
+      alert("Maximum 5 photos allowed. Only the first 5 will be used.");
+      selectedPhotos = files.slice(0, 5);
+    } else {
+      selectedPhotos = files;
+    }
+
+    // Show previews
+    photoPreviewsContainer.innerHTML = "";
+    photoPreviewsContainer.classList.remove("hidden");
+
+    selectedPhotos.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const previewDiv = document.createElement("div");
+        previewDiv.className = "relative group";
+        previewDiv.innerHTML = `
+          <img src="${event.target.result}" class="w-full h-24 object-cover rounded-lg border-2 border-zinc-700" alt="Preview ${index + 1}">
+          <button type="button" class="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" data-index="${index}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        `;
+
+        // Remove photo on click
+        previewDiv.querySelector("button").addEventListener("click", () => {
+          selectedPhotos.splice(index, 1);
+          photoInput.value = ""; // Reset input
+          if (selectedPhotos.length === 0) {
+            photoPreviewsContainer.classList.add("hidden");
+          } else {
+            // Re-render previews
+            const event = new Event("change");
+            Object.defineProperty(event, "target", {
+              value: { files: selectedPhotos },
+            });
+            photoInput.dispatchEvent(event);
+          }
+        });
+
+        photoPreviewsContainer.appendChild(previewDiv);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  // Contribute form submission
+  contributeForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Check if user is signed in
+    if (!window.authService.isSignedIn()) {
+      alert("Please sign in to contribute a location.");
+      toggleOverlay(contributeOverlay, false);
+      toggleOverlay(profileOverlay, true);
+      return;
+    }
+
+    // Validate coordinates
+    if (!validatedCoords) {
+      alert("Please enter valid GPS coordinates or Plus Code.");
+      return;
+    }
+
+    // If Plus Code, we need to convert it to lat/lng (for now, show error)
+    if (validatedCoords.plusCode) {
+      alert(
+        "Plus Code support requires additional library. Please use GPS coordinates for now.",
+      );
+      return;
+    }
+
     const formData = {
       name: document.getElementById("place-name").value,
-      location: document.getElementById("place-location").value,
+      address: document.getElementById("place-location").value,
+      latitude: validatedCoords.latitude,
+      longitude: validatedCoords.longitude,
       wifiType: document.getElementById("wifi-type").value,
       category: document.querySelector('input[name="category"]:checked')?.value,
       notes: document.getElementById("place-notes").value,
-      photos: document.getElementById("place-photos").files,
+      photos: selectedPhotos,
     };
+
     console.log("Contribution submitted:", formData);
 
-    // Show success message (in a real app, you'd send this to a backend)
-    alert(
-      "Thank you for your contribution! Your Wi-Fi hotspot has been submitted for review.",
+    // Submit to database
+    const result = await window.dbService.createHotspot(
+      formData.name,
+      formData.latitude,
+      formData.longitude,
+      formData.address,
     );
 
-    // Reset form and close overlay
-    contributeForm.reset();
-    toggleOverlay(contributeOverlay, false);
+    if (result.success) {
+      alert("Thank you! Your Wi-Fi hotspot has been added to the map.");
+
+      // Add marker to map immediately
+      const marker = L.marker([formData.latitude, formData.longitude], {
+        icon: L.divIcon({
+          className: "custom-marker",
+          html: `<div class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg shadow-lg">📶</div>`,
+          iconSize: [32, 32],
+        }),
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div class="p-2">
+          <h3 class="font-bold text-lg">${formData.name}</h3>
+          <p class="text-sm text-gray-600">${formData.address}</p>
+          <p class="text-xs text-gray-500 mt-1">Added by: ${window.authService.getCurrentUser()?.email}</p>
+        </div>
+      `);
+
+      // Pan to the new marker
+      map.setView([formData.latitude, formData.longitude], 15);
+
+      // Reset form and close overlay
+      contributeForm.reset();
+      selectedPhotos = [];
+      photoPreviewsContainer.classList.add("hidden");
+      photoPreviewsContainer.innerHTML = "";
+      validatedCoords = null;
+      coordPreview.classList.add("hidden");
+      latInput.value = "";
+      lngInput.value = "";
+      toggleOverlay(contributeOverlay, false);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
   });
 
   // Map button - recenter on user location

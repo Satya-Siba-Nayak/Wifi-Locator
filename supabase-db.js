@@ -11,9 +11,9 @@ class SupabaseDBService {
     if (window.supabase) {
       this.supabase = window.supabase;
       this.initialized = true;
-      console.log('Supabase DB service initialized');
+      console.log("Supabase DB service initialized");
     } else {
-      console.error('Supabase not initialized');
+      console.error("Supabase not initialized");
     }
   }
 
@@ -25,22 +25,53 @@ class SupabaseDBService {
    */
   async getLiveHotspots() {
     try {
-      const { data, error } = await this.supabase
-        .from('live_hotspot_data')
-        .select('*');
+      // First get hotspots from the view
+      const { data: hotspotData, error: hotspotError } = await this.supabase
+        .from("live_hotspot_data")
+        .select("*");
 
-      if (error) throw error;
+      if (hotspotError) throw hotspotError;
 
-      // Convert PostGIS geography to {lat, lng} format
-      const hotspots = data.map(spot => ({
-        ...spot,
-        latitude: this.extractLatitude(spot.location),
-        longitude: this.extractLongitude(spot.location)
-      }));
+      // Get hotspot IDs to fetch creator info
+      const hotspotIds = hotspotData.map((h) => h.id);
+
+      // Fetch hotspots with creator info from the base table
+      const { data: hotspotsWithCreators, error: creatorError } =
+        await this.supabase
+          .from("hotspots")
+          .select(
+            `
+          id,
+          created_by,
+          profiles:created_by (
+            username,
+            id
+          )
+        `,
+          )
+          .in("id", hotspotIds);
+
+      if (creatorError) {
+        console.warn("Could not fetch creator info:", creatorError);
+      }
+
+      // Merge creator info with hotspot data
+      const hotspots = hotspotData.map((spot) => {
+        const creatorInfo = hotspotsWithCreators?.find((h) => h.id === spot.id);
+        const profile = creatorInfo?.profiles;
+
+        return {
+          ...spot,
+          latitude: this.extractLatitude(spot.location),
+          longitude: this.extractLongitude(spot.location),
+          created_by_username: profile?.username || null,
+          created_by_id: creatorInfo?.created_by || null,
+        };
+      });
 
       return { success: true, data: hotspots };
     } catch (error) {
-      console.error('Error fetching live hotspots:', error);
+      console.error("Error fetching live hotspots:", error);
       return { success: false, error: error.message };
     }
   }
@@ -54,24 +85,27 @@ class SupabaseDBService {
    */
   async getHotspotsInBounds(minLat, maxLat, minLng, maxLng) {
     try {
-      const { data, error } = await this.supabase.rpc('get_hotspots_in_bounds', {
-        min_lat: minLat,
-        max_lat: maxLat,
-        min_lng: minLng,
-        max_lng: maxLng
-      });
+      const { data, error } = await this.supabase.rpc(
+        "get_hotspots_in_bounds",
+        {
+          min_lat: minLat,
+          max_lat: maxLat,
+          min_lng: minLng,
+          max_lng: maxLng,
+        },
+      );
 
       if (error) throw error;
 
-      const hotspots = data.map(spot => ({
+      const hotspots = data.map((spot) => ({
         ...spot,
         latitude: this.extractLatitude(spot.location),
-        longitude: this.extractLongitude(spot.location)
+        longitude: this.extractLongitude(spot.location),
       }));
 
       return { success: true, data: hotspots };
     } catch (error) {
-      console.error('Error fetching hotspots in bounds:', error);
+      console.error("Error fetching hotspots in bounds:", error);
       // Fallback to getting all hotspots and filtering client-side
       return await this.getLiveHotspots();
     }
@@ -88,29 +122,32 @@ class SupabaseDBService {
     try {
       const user = window.supabaseHelpers.getCurrentUser();
       if (!user) {
-        return { success: false, error: 'You must be signed in to add a hotspot' };
+        return {
+          success: false,
+          error: "You must be signed in to add a hotspot",
+        };
       }
 
       // Create WKT (Well-Known Text) format for PostGIS
       const locationWKT = `POINT(${longitude} ${latitude})`;
 
       const { data, error } = await this.supabase
-        .from('hotspots')
+        .from("hotspots")
         .insert({
           name,
           location: locationWKT,
           address_text: addressText,
-          created_by: user.id
+          created_by: user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('Hotspot created:', data);
+      console.log("Hotspot created:", data);
       return { success: true, data };
     } catch (error) {
-      console.error('Error creating hotspot:', error);
+      console.error("Error creating hotspot:", error);
       return { success: false, error: error.message };
     }
   }
@@ -126,11 +163,14 @@ class SupabaseDBService {
     try {
       const user = window.supabaseHelpers.getCurrentUser();
       if (!user) {
-        return { success: false, error: 'You must be signed in to submit a report' };
+        return {
+          success: false,
+          error: "You must be signed in to submit a report",
+        };
       }
 
       const { data, error } = await this.supabase
-        .from('reports')
+        .from("reports")
         .insert({
           hotspot_id: hotspotId,
           user_id: user.id,
@@ -138,7 +178,7 @@ class SupabaseDBService {
           noise_level: reportData.noiseLevel,
           security_rating: reportData.securityRating,
           password_text: reportData.password || null,
-          comment: reportData.comment || null
+          comment: reportData.comment || null,
         })
         .select()
         .single();
@@ -148,10 +188,10 @@ class SupabaseDBService {
       // Award points to user
       await this.awardPoints(user.id, 10); // 10 points per report
 
-      console.log('Report submitted:', data);
+      console.log("Report submitted:", data);
       return { success: true, data };
     } catch (error) {
-      console.error('Error submitting report:', error);
+      console.error("Error submitting report:", error);
       return { success: false, error: error.message };
     }
   }
@@ -163,26 +203,28 @@ class SupabaseDBService {
     try {
       const user = window.supabaseHelpers.getCurrentUser();
       if (!user) {
-        return { success: false, error: 'You must be signed in' };
+        return { success: false, error: "You must be signed in" };
       }
 
       const { data, error } = await this.supabase
-        .from('reports')
-        .select(`
+        .from("reports")
+        .select(
+          `
           *,
           hotspots (
             name,
             address_text
           )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        `,
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error fetching user reports:', error);
+      console.error("Error fetching user reports:", error);
       return { success: false, error: error.message };
     }
   }
@@ -194,22 +236,23 @@ class SupabaseDBService {
    */
   async getUserProfile(userId = null) {
     try {
-      const targetUserId = userId || window.supabaseHelpers.getCurrentUser()?.id;
+      const targetUserId =
+        userId || window.supabaseHelpers.getCurrentUser()?.id;
       if (!targetUserId) {
-        return { success: false, error: 'No user ID provided' };
+        return { success: false, error: "No user ID provided" };
       }
 
       const { data, error } = await this.supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', targetUserId)
+        .from("profiles")
+        .select("*")
+        .eq("id", targetUserId)
         .single();
 
       if (error) throw error;
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error("Error fetching user profile:", error);
       return { success: false, error: error.message };
     }
   }
@@ -219,24 +262,24 @@ class SupabaseDBService {
    */
   async awardPoints(userId, points) {
     try {
-      const { data, error } = await this.supabase.rpc('increment_user_points', {
+      const { data, error } = await this.supabase.rpc("increment_user_points", {
         user_id: userId,
-        points_to_add: points
+        points_to_add: points,
       });
 
       if (error) {
         // Fallback: manual update if RPC doesn't exist
         const { error: updateError } = await this.supabase
-          .from('profiles')
+          .from("profiles")
           .update({ points: this.supabase.raw(`points + ${points}`) })
-          .eq('id', userId);
+          .eq("id", userId);
 
         if (updateError) throw updateError;
       }
 
       return { success: true };
     } catch (error) {
-      console.error('Error awarding points:', error);
+      console.error("Error awarding points:", error);
       return { success: false, error: error.message };
     }
   }
@@ -251,12 +294,12 @@ class SupabaseDBService {
     if (!location) return null;
 
     // If it's already a GeoJSON object
-    if (typeof location === 'object' && location.coordinates) {
+    if (typeof location === "object" && location.coordinates) {
       return location.coordinates[1];
     }
 
     // If it's a WKT string like "POINT(lng lat)"
-    if (typeof location === 'string') {
+    if (typeof location === "string") {
       const match = location.match(/POINT\(([^ ]+) ([^ ]+)\)/);
       if (match) {
         return parseFloat(match[2]);
@@ -272,11 +315,11 @@ class SupabaseDBService {
   extractLongitude(location) {
     if (!location) return null;
 
-    if (typeof location === 'object' && location.coordinates) {
+    if (typeof location === "object" && location.coordinates) {
       return location.coordinates[0];
     }
 
-    if (typeof location === 'string') {
+    if (typeof location === "string") {
       const match = location.match(/POINT\(([^ ]+) ([^ ]+)\)/);
       if (match) {
         return parseFloat(match[1]);

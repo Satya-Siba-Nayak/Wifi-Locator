@@ -651,6 +651,128 @@
                             />
                         </div>
 
+                        <!-- GPS Coordinates / Plus Code -->
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-zinc-400 mb-2"
+                            >
+                                Location Coordinates
+                                <span class="text-red-400">*</span>
+                            </label>
+                            <div class="space-y-3">
+                                <!-- Tabs for coordinate type -->
+                                <div class="flex gap-2">
+                                    <button
+                                        type="button"
+                                        id="gps-tab"
+                                        class="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                        📍 GPS Coordinates
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="pluscode-tab"
+                                        class="flex-1 px-4 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg transition-colors hover:bg-zinc-700"
+                                    >
+                                        🌐 Plus Code
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="auto-detect-btn"
+                                        class="px-4 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg transition-colors hover:bg-zinc-700"
+                                        title="Use my current location"
+                                    >
+                                        📡
+                                    </button>
+                                </div>
+
+                                <!-- GPS Input -->
+                                <div
+                                    id="gps-input-container"
+                                    class="grid grid-cols-2 gap-3"
+                                >
+                                    <div>
+                                        <input
+                                            id="latitude"
+                                            type="text"
+                                            placeholder="Latitude (e.g., 40.7128)"
+                                            class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                        />
+                                    </div>
+                                    <div>
+                                        <input
+                                            id="longitude"
+                                            type="text"
+                                            placeholder="Longitude (e.g., -74.0060)"
+                                            class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Plus Code Input -->
+                                <div
+                                    id="pluscode-input-container"
+                                    class="hidden"
+                                >
+                                    <input
+                                        id="plus-code"
+                                        type="text"
+                                        placeholder="e.g., 8FW4V75V+8Q"
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    />
+                                </div>
+
+                                <!-- Helper text -->
+                                <p class="text-xs text-zinc-500">
+                                    <span id="gps-helper"
+                                        >Enter exact GPS coordinates or click 📡
+                                        to use your current location</span
+                                    >
+                                    <span id="pluscode-helper" class="hidden"
+                                        >Enter Google Plus Code (find it on
+                                        <a
+                                            href="https://plus.codes"
+                                            target="_blank"
+                                            class="text-blue-400 hover:underline"
+                                            >plus.codes</a
+                                        >)</span
+                                    >
+                                </p>
+
+                                <!-- Coordinate Preview -->
+                                <div
+                                    id="coord-preview"
+                                    class="hidden p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg"
+                                >
+                                    <div
+                                        class="flex items-center justify-between"
+                                    >
+                                        <div>
+                                            <p class="text-xs text-zinc-400">
+                                                Preview:
+                                            </p>
+                                            <p
+                                                id="coord-preview-text"
+                                                class="text-sm text-zinc-200 font-mono"
+                                            ></p>
+                                        </div>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5 text-green-400"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                clip-rule="evenodd"
+                                            />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Wi-Fi Type -->
                         <div>
                             <label
@@ -802,7 +924,7 @@
                             >
                                 Photos (Optional)
                             </label>
-                            <div class="relative">
+                            <div class="space-y-3">
                                 <input
                                     id="place-photos"
                                     type="file"
@@ -812,6 +934,7 @@
                                 />
                                 <label
                                     for="place-photos"
+                                    id="photo-upload-label"
                                     class="flex flex-col items-center justify-center w-full h-32 bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-blue-500 transition-colors"
                                 >
                                     <svg
@@ -832,9 +955,18 @@
                                         >Click to upload photos</span
                                     >
                                     <span class="text-xs text-zinc-500 mt-1"
-                                        >PNG, JPG up to 10MB</span
+                                        >PNG, JPG up to 10MB each (max 5
+                                        photos)</span
                                     >
                                 </label>
+
+                                <!-- Photo Previews -->
+                                <div
+                                    id="photo-previews"
+                                    class="hidden grid grid-cols-3 gap-3"
+                                >
+                                    <!-- Preview thumbnails will be inserted here -->
+                                </div>
                             </div>
                         </div>
 
