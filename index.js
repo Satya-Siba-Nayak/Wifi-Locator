@@ -24,56 +24,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   await waitForSupabase();
   console.log("All services initialized");
 
-  // Initialize Plus Code API wrapper
-  window.PlusCodeAPI = {
-    encode: (lat, lng) => {
-      try {
-        if (typeof OpenLocationCode !== "undefined") {
-          const olc = new OpenLocationCode();
-          return olc.encode(lat, lng);
-        } else if (window.OpenLocationCode) {
-          return window.OpenLocationCode.encode(lat, lng);
-        }
-        throw new Error("OpenLocationCode library not loaded");
-      } catch (e) {
-        console.error("Plus Code encode error:", e);
-        throw e;
-      }
-    },
-    decode: (code) => {
-      try {
-        if (typeof OpenLocationCode !== "undefined") {
-          const olc = new OpenLocationCode();
-          return olc.decode(code);
-        } else if (window.OpenLocationCode) {
-          return window.OpenLocationCode.decode(code);
-        }
-        throw new Error("OpenLocationCode library not loaded");
-      } catch (e) {
-        console.error("Plus Code decode error:", e);
-        throw e;
-      }
-    },
-    isValid: (code) => {
-      try {
-        if (typeof OpenLocationCode !== "undefined") {
-          const olc = new OpenLocationCode();
-          return olc.isValid(code);
-        } else if (window.OpenLocationCode) {
-          return window.OpenLocationCode.isValid(code);
-        }
-        throw new Error("OpenLocationCode library not loaded");
-      } catch (e) {
-        console.error("Plus Code validation error:", e);
-        return false;
-      }
-    },
-  };
-
-  console.log(
-    "Plus Code API initialized:",
-    typeof OpenLocationCode !== "undefined" || !!window.OpenLocationCode,
-  );
+  // Verify Plus Code API is available (defined inline in HTML)
+  if (window.PlusCodeAPI) {
+    console.log("✅ Plus Code API ready");
+    // Test it
+    try {
+      const testCode = window.PlusCodeAPI.encode(40.7128, -74.006);
+      console.log("Plus Code test:", testCode);
+    } catch (e) {
+      console.error("Plus Code test failed:", e);
+    }
+  } else {
+    console.error("❌ Plus Code API not loaded!");
+  }
 
   // --- STATE ---
   let currentUserLocation = null;

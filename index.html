@@ -11,8 +11,146 @@
         />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-        <!-- Open Location Code (Plus Codes) Library -->
-        <script src="https://unpkg.com/open-location-code@1.0.3/dist/openlocationcode.min.js"></script>
+        <!-- Open Location Code (Plus Codes) Library - Browser compatible version -->
+        <script>
+            // Inline Plus Code library wrapper for browser compatibility
+            window.PlusCodeAPI = {
+                // Plus Codes character set
+                CODE_ALPHABET: "23456789CFGHJMPQRVWX",
+                SEPARATOR: "+",
+                SEPARATOR_POSITION: 8,
+                PADDING_CHARACTER: "0",
+
+                // Encode lat/lng to Plus Code
+                encode: function (latitude, longitude, codeLength) {
+                    codeLength = codeLength || 10;
+                    if (latitude < -90 || latitude > 90) {
+                        throw new Error("Invalid latitude");
+                    }
+                    if (longitude < -180 || longitude > 180) {
+                        throw new Error("Invalid longitude");
+                    }
+
+                    // Normalize
+                    latitude = parseFloat(latitude);
+                    longitude = parseFloat(longitude);
+
+                    // Adjust latitude and longitude to be positive
+                    let lat = latitude + 90;
+                    let lng = longitude + 180;
+
+                    let code = "";
+                    const latPlaceVal = [20, 1, 0.05, 0.0025, 0.000125];
+                    const lngPlaceVal = [20, 1, 0.05, 0.0025, 0.000125];
+
+                    // Generate code pairs
+                    for (let i = 0; i < 5; i++) {
+                        const latDigit = Math.floor(lat / latPlaceVal[i]);
+                        const lngDigit = Math.floor(lng / lngPlaceVal[i]);
+
+                        code += this.CODE_ALPHABET[lngDigit];
+                        code += this.CODE_ALPHABET[latDigit];
+
+                        lat -= latDigit * latPlaceVal[i];
+                        lng -= lngDigit * lngPlaceVal[i];
+
+                        if (i === 3) {
+                            code += this.SEPARATOR;
+                        }
+                    }
+
+                    return code.substring(0, codeLength + 1);
+                },
+
+                // Decode Plus Code to lat/lng
+                decode: function (code) {
+                    if (!this.isValid(code)) {
+                        throw new Error("Invalid Plus Code");
+                    }
+
+                    code = code.toUpperCase().replace(/\s/g, "");
+                    const separatorIndex = code.indexOf(this.SEPARATOR);
+
+                    if (separatorIndex === -1) {
+                        throw new Error("Missing separator");
+                    }
+
+                    code = code.replace(this.SEPARATOR, "");
+
+                    const latPlaceVal = [20, 1, 0.05, 0.0025, 0.000125];
+                    const lngPlaceVal = [20, 1, 0.05, 0.0025, 0.000125];
+
+                    let lat = 0,
+                        lng = 0;
+                    let pairIndex = 0;
+
+                    for (let i = 0; i < Math.min(code.length, 10); i += 2) {
+                        const lngChar = code[i];
+                        const latChar = code[i + 1];
+
+                        const lngValue = this.CODE_ALPHABET.indexOf(lngChar);
+                        const latValue = this.CODE_ALPHABET.indexOf(latChar);
+
+                        if (lngValue === -1 || latValue === -1) break;
+
+                        lng += lngValue * lngPlaceVal[pairIndex];
+                        lat += latValue * latPlaceVal[pairIndex];
+
+                        pairIndex++;
+                    }
+
+                    // Center of the code area
+                    const latCenter =
+                        lat - 90 + latPlaceVal[Math.min(pairIndex, 4)] / 2;
+                    const lngCenter =
+                        lng - 180 + lngPlaceVal[Math.min(pairIndex, 4)] / 2;
+
+                    return {
+                        latitudeCenter: latCenter,
+                        longitudeCenter: lngCenter,
+                        latitudeLo: lat - 90,
+                        longitudeLo: lng - 180,
+                        latitudeHi:
+                            lat - 90 + latPlaceVal[Math.min(pairIndex - 1, 4)],
+                        longitudeHi:
+                            lng - 180 + lngPlaceVal[Math.min(pairIndex - 1, 4)],
+                        codeLength: code.length,
+                    };
+                },
+
+                // Validate Plus Code format
+                isValid: function (code) {
+                    if (!code || typeof code !== "string") return false;
+
+                    code = code.toUpperCase().replace(/\s/g, "");
+
+                    // Check separator
+                    const separatorIndex = code.indexOf(this.SEPARATOR);
+                    if (
+                        separatorIndex === -1 ||
+                        separatorIndex > 8 ||
+                        separatorIndex % 2 !== 0
+                    ) {
+                        return false;
+                    }
+
+                    // Check characters
+                    const cleanCode = code.replace(this.SEPARATOR, "");
+                    for (let i = 0; i < cleanCode.length; i++) {
+                        if (
+                            this.CODE_ALPHABET.indexOf(cleanCode[i]) === -1 &&
+                            cleanCode[i] !== this.PADDING_CHARACTER
+                        ) {
+                            return false;
+                        }
+                    }
+
+                    return cleanCode.length >= 2;
+                },
+            };
+
+            console.log("Plus Code API loaded (inline implementation)");
+        </script>
 
         <!-- Supabase Configuration and Services (using ES6 modules) -->
         <script type="module" src="supabase-config.js"></script>
