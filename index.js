@@ -815,6 +815,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     gpsInputContainer.classList.add("hidden");
     pluscodeHelper.classList.remove("hidden");
     gpsHelper.classList.add("hidden");
+
+    // If GPS coords exist, convert to Plus Code
+    if (latInput.value && lngInput.value) {
+      const lat = parseFloat(latInput.value);
+      const lng = parseFloat(lngInput.value);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        try {
+          const plusCode = window.OpenLocationCode.encode(lat, lng);
+          plusCodeInput.value = plusCode;
+        } catch (e) {
+          console.error("Error converting to Plus Code:", e);
+        }
+      }
+    }
+
     validateCoordinates();
   });
 
@@ -824,9 +839,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       alert("Location not available. Please allow location access.");
       return;
     }
-    latInput.value = currentUserLocation.latitude.toFixed(6);
-    lngInput.value = currentUserLocation.longitude.toFixed(6);
+
+    if (currentCoordMode === "gps") {
+      // Fill GPS coordinates
+      latInput.value = currentUserLocation.latitude.toFixed(6);
+      lngInput.value = currentUserLocation.longitude.toFixed(6);
+    } else {
+      // Convert to Plus Code and fill
+      try {
+        const plusCode = window.OpenLocationCode.encode(
+          currentUserLocation.latitude,
+          currentUserLocation.longitude,
+        );
+        plusCodeInput.value = plusCode;
+      } catch (e) {
+        console.error("Error generating Plus Code:", e);
+        alert("Could not generate Plus Code from your location.");
+        return;
+      }
+    }
+
     validateCoordinates();
+
+    // Visual feedback
     autoDetectBtn.classList.add("bg-green-600", "text-white");
     setTimeout(() => {
       autoDetectBtn.classList.remove("bg-green-600", "text-white");
@@ -859,19 +894,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         coordPreview.classList.add("hidden");
       }
     } else {
-      const plusCode = plusCodeInput.value.trim();
-      // Basic Plus Code validation (format: 8FW4V75V+8Q)
-      if (
-        plusCode.match(
-          /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}$/i,
-        )
-      ) {
-        // Note: Real conversion requires the Open Location Code library
-        // For now, we'll just validate the format
-        validatedCoords = { plusCode: plusCode.toUpperCase() };
-        coordPreview.classList.remove("hidden");
-        coordPreviewText.textContent = plusCode.toUpperCase();
-      } else {
+      const plusCode = plusCodeInput.value.trim().toUpperCase();
+
+      try {
+        // Validate using Open Location Code library
+        if (
+          window.OpenLocationCode &&
+          window.OpenLocationCode.isValid(plusCode)
+        ) {
+          // Decode Plus Code to lat/lng for database storage
+          const codeArea = window.OpenLocationCode.decode(plusCode);
+          const lat = codeArea.latitudeCenter;
+          const lng = codeArea.longitudeCenter;
+
+          // Store as lat/lng for uniform database storage
+          validatedCoords = {
+            latitude: lat,
+            longitude: lng,
+            plusCode: plusCode,
+          };
+
+          coordPreview.classList.remove("hidden");
+          coordPreviewText.textContent = `${plusCode} → ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        } else {
+          validatedCoords = null;
+          coordPreview.classList.add("hidden");
+        }
+      } catch (e) {
+        // Invalid Plus Code
+        console.error("Plus Code validation error:", e);
         validatedCoords = null;
         coordPreview.classList.add("hidden");
       }
@@ -952,13 +1003,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // If Plus Code, we need to convert it to lat/lng (for now, show error)
-    if (validatedCoords.plusCode) {
-      alert(
-        "Plus Code support requires additional library. Please use GPS coordinates for now.",
-      );
-      return;
-    }
+    // Coordinates are already validated and converted to lat/lng format
+    // Both GPS input and Plus Code are stored uniformly as latitude/longitude
 
     const formData = {
       name: document.getElementById("place-name").value,
