@@ -22,14 +22,16 @@ const waitForSupabase = () => {
 document.addEventListener("DOMContentLoaded", async () => {
   // Wait for Supabase to initialize
   await waitForSupabase();
+  console.log("✅ All services initialized");
 
   // Verify Plus Code API is available (defined inline in HTML)
   if (window.PlusCodeAPI) {
+    console.log("✅ Plus Code API ready");
     // Test Plus Code API
     try {
       window.PlusCodeAPI.encode(40.7128, -74.006);
     } catch (e) {
-      console.error("Plus Code test failed:", e);
+      console.error("❌ Plus Code test failed:", e);
     }
   } else {
     console.error("❌ Plus Code API not loaded!");
@@ -415,9 +417,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Load and display hotspots from database
   const loadHotspots = async () => {
     try {
+      console.log("🔍 Loading hotspots from database...");
       const result = await window.dbService.getLiveHotspots();
 
       if (result.success && result.data) {
+        console.log(`✅ Loaded ${result.data.length} hotspots from database`);
+
         if (result.data.length === 0) {
           console.warn("⚠️ No hotspots in database! Add one first.");
           return;
@@ -826,8 +831,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Geolocation
   if (navigator.geolocation) {
+    console.log("📍 Requesting geolocation...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        console.log("✅ Geolocation success:", {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: `${position.coords.accuracy}m`,
+        });
+
         currentUserLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,

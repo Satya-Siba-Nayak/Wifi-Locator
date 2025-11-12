@@ -15,6 +15,11 @@ let currentUser = null;
 // Set up auth state observer
 supabase.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user || null;
+  console.log(
+    "🔐 Auth state changed:",
+    event,
+    currentUser?.email || "signed out",
+  );
   updateUIForAuthState(currentUser);
 });
 
@@ -72,7 +77,9 @@ window.supabaseHelpers = {
   getCurrentUser: () => currentUser,
   getSession: async () => {
     const { data, error } = await supabase.auth.getSession();
-    if (error) console.error("Error getting session:", error);
+    if (error) console.error("❌ Error getting session:", error);
     return data?.session;
   },
 };
+
+console.log("✅ Supabase initialized successfully");
