@@ -386,14 +386,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Calculate scale factor based on zoom level
   const getZoomScale = () => {
     const zoom = map.getZoom();
-    // Scale from 0.6 at zoom 10 to 1.2 at zoom 18
-    // zoom 10-12: small (0.6-0.75)
-    // zoom 13-15: medium (0.8-1.0)
-    // zoom 16-18: large (1.05-1.2)
+    // INVERTED: Popup scales WITH map zoom
+    // Zoom OUT (low zoom) = small popup (0.4)
+    // Zoom IN (high zoom) = large popup (1.0)
+    // zoom 5-8: very small (0.4-0.55)
+    // zoom 9-12: small (0.6-0.8)
+    // zoom 13-15: medium (0.85-0.95)
+    // zoom 16-18: normal (1.0)
     let scale;
-    if (zoom <= 10) scale = 0.6;
-    else if (zoom >= 18) scale = 1.2;
-    else scale = 0.6 + ((zoom - 10) / 8) * 0.6;
+    if (zoom <= 5) scale = 0.4;
+    else if (zoom >= 18) scale = 1.0;
+    else scale = 0.4 + ((zoom - 5) / 13) * 0.6;
 
     console.log(`🔍 Zoom Level: ${zoom} → Scale: ${scale.toFixed(2)}`);
     return scale;
