@@ -22,15 +22,12 @@ const waitForSupabase = () => {
 document.addEventListener("DOMContentLoaded", async () => {
   // Wait for Supabase to initialize
   await waitForSupabase();
-  console.log("All services initialized");
 
   // Verify Plus Code API is available (defined inline in HTML)
   if (window.PlusCodeAPI) {
-    console.log("✅ Plus Code API ready");
-    // Test it
+    // Test Plus Code API
     try {
-      const testCode = window.PlusCodeAPI.encode(40.7128, -74.006);
-      console.log("Plus Code test:", testCode);
+      window.PlusCodeAPI.encode(40.7128, -74.006);
     } catch (e) {
       console.error("Plus Code test failed:", e);
     }
@@ -132,50 +129,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     "24/7 study spots",
     "Libraries with free internet",
     "Coffee shops nearby",
-  ];
-
-  const MOCK_PLACES = [
-    {
-      maps: {
-        title: "The Daily Grind",
-        uri: "https://www.openstreetmap.org/",
-        placeAnswerSources: {
-          reviewSnippets: [
-            {
-              text: "Great coffee and reliable Wi-Fi for working.",
-              author: "Jane D.",
-            },
-            {
-              text: "Can get a bit crowded, but the atmosphere is nice.",
-              author: "John S.",
-            },
-          ],
-        },
-      },
-    },
-    {
-      maps: {
-        title: "City Central Library",
-        uri: "https://www.openstreetmap.org/",
-        placeAnswerSources: {
-          reviewSnippets: [
-            {
-              text: "Very quiet and the internet is super fast and free.",
-              author: "Alice W.",
-            },
-          ],
-        },
-      },
-    },
-    {
-      maps: {
-        title: "Co-Work & Create",
-        uri: "https://www.openstreetmap.org/",
-        placeAnswerSources: {
-          reviewSnippets: [],
-        },
-      },
-    },
   ];
 
   // --- RENDERING ---
@@ -404,7 +357,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     else if (zoom >= 18) scale = 1.0;
     else scale = 0.4 + ((zoom - 5) / 13) * 0.6;
 
-    console.log(`🔍 Zoom Level: ${zoom} → Scale: ${scale.toFixed(2)}`);
     return scale;
   };
 
@@ -462,22 +414,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Load and display hotspots from database
   const loadHotspots = async () => {
-    console.log("🔍 Starting to load hotspots...");
     try {
       const result = await window.dbService.getLiveHotspots();
-      console.log("📡 Database result:", result);
 
       if (result.success && result.data) {
-        console.log(`✅ Loaded ${result.data.length} hotspots from database`);
-        console.log("📊 Hotspot data:", result.data);
-
         if (result.data.length === 0) {
           console.warn("⚠️ No hotspots in database! Add one first.");
           return;
         }
 
         result.data.forEach((hotspot, index) => {
-          console.log(`🔨 Creating marker ${index + 1}:`, hotspot);
           if (hotspot.latitude && hotspot.longitude) {
             // Create custom marker for hotspot with improved design
             const scale = getZoomScale();
@@ -489,10 +435,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             marker.hotspotData = hotspot;
             window.hotspotsMarkers.push(marker);
 
-            console.log(
-              `✅ Marker ${index + 1} added to map at [${hotspot.latitude}, ${hotspot.longitude}]`,
-            );
-
             // Get creator info (username only, no email)
             const creatorName = hotspot.created_by_username || "Anonymous";
 
@@ -500,15 +442,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             const photoUrl = hotspot.first_photo_path
               ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
               : null;
-
-            console.log(`📸 Photo debug for hotspot ${hotspot.id}:`, {
-              first_photo_path: hotspot.first_photo_path,
-              photoUrl: hotspot.first_photo_path
-                ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
-                : null,
-              creatorName: hotspot.created_by_username || "Anonymous",
-              created_by_username: hotspot.created_by_username,
-            });
 
             // Create popup with improved design using CSS classes
             const popupScale = getZoomScale();
@@ -893,14 +826,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Geolocation
   if (navigator.geolocation) {
-    console.log("Requesting geolocation...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        console.log("Geolocation success:", position.coords);
-        console.log("Latitude:", position.coords.latitude);
-        console.log("Longitude:", position.coords.longitude);
-        console.log("Accuracy:", position.coords.accuracy, "meters");
-
         currentUserLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -1398,8 +1325,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       notes: document.getElementById("place-notes").value,
       photos: selectedPhotos,
     };
-
-    console.log("Contribution submitted:", formData);
 
     // Submit to database
     const result = await window.dbService.createHotspot(
