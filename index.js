@@ -351,7 +351,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Update popup content with new scale
         const popup = marker.getPopup();
         if (popup && marker.hotspotData) {
-          const newContent = generatePopupContent(marker.hotspotData, scale);
+          const newContent = generatePopupContent(marker.hotspotData);
           popup.setContent(newContent);
 
           const baseMaxWidth = 320;
@@ -359,9 +359,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           popup.options.maxWidth = scaledMaxWidth;
           popup.options.minWidth = Math.floor(280 * scale);
 
-          // If popup is open, update it
+          // If popup is open, update its transform scale
           if (popup.isOpen()) {
             popup.update();
+            const popupElement = popup.getElement();
+            if (popupElement) {
+              popupElement.style.transform = `scale(${scale})`;
+            }
           }
         }
       });
@@ -487,17 +491,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             // Create popup with improved design using CSS classes
             const popupScale = getZoomScale();
-            const popupContent = generatePopupContent(hotspot, popupScale);
+            const popupContent = generatePopupContent(hotspot);
 
             // Calculate popup width based on zoom
             const baseMaxWidth = 320;
             const scaledMaxWidth = Math.floor(baseMaxWidth * popupScale);
 
-            marker.bindPopup(popupContent, {
+            const popup = L.popup({
               maxWidth: scaledMaxWidth,
               minWidth: Math.floor(280 * popupScale),
               className: "custom-popup-leaflet",
               closeButton: true,
+            }).setContent(popupContent);
+
+            marker.bindPopup(popup);
+
+            // Apply scale transform when popup opens
+            marker.on("popupopen", function (e) {
+              const scale = getZoomScale();
+              const popupElement = e.popup.getElement();
+              if (popupElement) {
+                popupElement.style.transform = `scale(${scale})`;
+              }
             });
           }
         });
@@ -508,14 +523,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   // Generate popup content for a hotspot
-  const generatePopupContent = (hotspot, scale) => {
+  const generatePopupContent = (hotspot) => {
     const creatorName = hotspot.created_by_username || "Anonymous";
     const photoUrl = hotspot.first_photo_path
       ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
       : null;
 
     return `
-      <div class="popup-container" style="transform: scale(${scale});">
+      <div class="popup-container">
         ${
           photoUrl
             ? `

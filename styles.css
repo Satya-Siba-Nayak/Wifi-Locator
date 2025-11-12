@@ -151,9 +151,11 @@ body {
     background: rgba(59, 130, 246, 0.8);
 }
 
-/* Popup animation */
+/* Popup animation and scaling */
 .leaflet-popup {
     animation: popupFadeIn 0.3s ease-out;
+    transform-origin: bottom center;
+    transition: transform 0.3s ease;
 }
 
 @keyframes popupFadeIn {
@@ -165,6 +167,16 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Apply zoom-based scaling to entire popup container */
+.custom-popup-leaflet.leaflet-popup {
+    transform-origin: bottom center;
+}
+
+.custom-popup-leaflet .leaflet-popup-content-wrapper,
+.custom-popup-leaflet .leaflet-popup-tip {
+    transition: all 0.3s ease;
 }
 
 /* Popup Content Styling */
