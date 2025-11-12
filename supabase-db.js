@@ -118,7 +118,13 @@ class SupabaseDBService {
    * @param {number} longitude - Longitude coordinate
    * @param {string} addressText - Human-readable address
    */
-  async createHotspot(name, latitude, longitude, addressText = null) {
+  async createHotspot(
+    name,
+    latitude,
+    longitude,
+    addressText = null,
+    photos = [],
+  ) {
     try {
       const user = window.supabaseHelpers.getCurrentUser();
       if (!user) {
@@ -127,6 +133,9 @@ class SupabaseDBService {
           error: "You must be signed in to add a hotspot",
         };
       }
+
+      // Ensure profile exists before creating hotspot
+      await this.ensureProfileExists(user);
 
       // Create WKT (Well-Known Text) format for PostGIS
       const locationWKT = `POINT(${longitude} ${latitude})`;
@@ -145,10 +154,119 @@ class SupabaseDBService {
       if (error) throw error;
 
       console.log("Hotspot created:", data);
+
+      // Upload photos if provided
+      if (photos && photos.length > 0) {
+        const uploadResult = await this.uploadHotspotPhotos(
+          data.id,
+          photos,
+          user.id,
+        );
+        if (!uploadResult.success) {
+          console.warn("Photo upload warning:", uploadResult.error);
+        }
+      }
+
       return { success: true, data };
     } catch (error) {
       console.error("Error creating hotspot:", error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Upload photos for a hotspot to Supabase Storage
+   * @param {number} hotspotId - ID of the hotspot
+   * @param {File[]} photos - Array of File objects
+   * @param {string} userId - ID of the user uploading
+   */
+  async uploadHotspotPhotos(hotspotId, photos, userId) {
+    try {
+      const uploadedPaths = [];
+
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        const fileExt = photo.name.split(".").pop();
+        const fileName = `${hotspotId}/${Date.now()}_${i}.${fileExt}`;
+
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } =
+          await this.supabase.storage
+            .from("hotspot-photos")
+            .upload(fileName, photo, {
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+        if (uploadError) {
+          console.error(`Error uploading photo ${i}:`, uploadError);
+          continue; // Skip this photo but continue with others
+        }
+
+        uploadedPaths.push(uploadData.path);
+
+        // Save photo reference in database
+        const { error: dbError } = await this.supabase
+          .from("hotspot_photos")
+          .insert({
+            hotspot_id: hotspotId,
+            uploaded_by: userId,
+            storage_path: uploadData.path,
+            display_order: i,
+          });
+
+        if (dbError) {
+          console.error(`Error saving photo reference ${i}:`, dbError);
+        }
+      }
+
+      return {
+        success: true,
+        uploadedCount: uploadedPaths.length,
+        paths: uploadedPaths,
+      };
+    } catch (error) {
+      console.error("Error uploading photos:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Ensure user profile exists in profiles table
+   * @param {object} user - User object from Supabase auth
+   */
+  async ensureProfileExists(user) {
+    try {
+      // Check if profile exists
+      const { data: existing } = await this.supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (!existing) {
+        // Create profile if it doesn't exist
+        const username =
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          `user_${user.id.substring(0, 8)}`;
+
+        const { error } = await this.supabase.from("profiles").insert({
+          id: user.id,
+          username: username,
+          points: 0,
+        });
+
+        if (error && error.code !== "23505") {
+          // Ignore duplicate key errors
+          console.error("Error creating profile:", error);
+        } else {
+          console.log("Profile created for user:", username);
+        }
+      }
+    } catch (error) {
+      console.warn("Profile check/creation warning:", error);
+      // Don't fail the whole operation if profile creation fails
     }
   }
 

@@ -1036,6 +1036,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       formData.latitude,
       formData.longitude,
       formData.address,
+      formData.photos, // Pass photos array
     );
 
     if (result.success) {
