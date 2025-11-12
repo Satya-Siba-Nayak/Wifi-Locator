@@ -337,6 +337,36 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
       .addTo(map);
 
+    // Update marker and popup sizes on zoom
+    map.on("zoomend", () => {
+      const scale = getZoomScale();
+      console.log(
+        `🔍 Zoom changed to ${map.getZoom()}, scale: ${scale.toFixed(2)}`,
+      );
+
+      // Update all marker icons and popups
+      window.hotspotsMarkers.forEach((marker) => {
+        marker.setIcon(createMarkerIcon(scale));
+
+        // Update popup content with new scale
+        const popup = marker.getPopup();
+        if (popup && marker.hotspotData) {
+          const newContent = generatePopupContent(marker.hotspotData, scale);
+          popup.setContent(newContent);
+
+          const baseMaxWidth = 320;
+          const scaledMaxWidth = Math.floor(baseMaxWidth * scale);
+          popup.options.maxWidth = scaledMaxWidth;
+          popup.options.minWidth = Math.floor(280 * scale);
+
+          // If popup is open, update it
+          if (popup.isOpen()) {
+            popup.update();
+          }
+        }
+      });
+    });
+
     // Load existing hotspots from database
     loadHotspots();
   };
@@ -566,36 +596,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
     `;
   };
-
-  // Update marker and popup sizes on zoom
-  map.on("zoomend", () => {
-    const scale = getZoomScale();
-    console.log(
-      `🔍 Zoom changed to ${map.getZoom()}, scale: ${scale.toFixed(2)}`,
-    );
-
-    // Update all marker icons and popups
-    window.hotspotsMarkers.forEach((marker) => {
-      marker.setIcon(createMarkerIcon(scale));
-
-      // Update popup content with new scale
-      const popup = marker.getPopup();
-      if (popup && marker.hotspotData) {
-        const newContent = generatePopupContent(marker.hotspotData, scale);
-        popup.setContent(newContent);
-
-        const baseMaxWidth = 320;
-        const scaledMaxWidth = Math.floor(baseMaxWidth * scale);
-        popup.options.maxWidth = scaledMaxWidth;
-        popup.options.minWidth = Math.floor(280 * scale);
-
-        // If popup is open, update it
-        if (popup.isOpen()) {
-          popup.update();
-        }
-      }
-    });
-  });
 
   // Helper function to convert speed score to label
   const getSpeedLabel = (score) => {
