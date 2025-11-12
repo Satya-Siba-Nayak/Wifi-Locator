@@ -151,32 +151,33 @@ body {
     background: rgba(59, 130, 246, 0.8);
 }
 
-/* Popup animation and scaling */
+/* Popup animation */
 .leaflet-popup {
     animation: popupFadeIn 0.3s ease-out;
-    transform-origin: bottom center;
-    transition: transform 0.3s ease;
 }
 
 @keyframes popupFadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
     }
 }
 
-/* Apply zoom-based scaling to entire popup container */
-.custom-popup-leaflet.leaflet-popup {
+/* Apply zoom-based scaling to popup content wrapper only */
+.custom-popup-leaflet .leaflet-popup-content-wrapper {
     transform-origin: bottom center;
+    transition: transform 0.2s ease-out;
 }
 
-.custom-popup-leaflet .leaflet-popup-content-wrapper,
 .custom-popup-leaflet .leaflet-popup-tip {
-    transition: all 0.3s ease;
+    transform-origin: top center;
+    transition: transform 0.2s ease-out;
+}
+
+.custom-popup-leaflet .leaflet-popup-close-button {
+    transition: all 0.2s ease-out;
 }
 
 /* Popup Content Styling */

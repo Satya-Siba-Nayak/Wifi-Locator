@@ -364,7 +364,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             popup.update();
             const popupElement = popup.getElement();
             if (popupElement) {
-              popupElement.style.transform = `scale(${scale})`;
+              const wrapper = popupElement.querySelector(
+                ".leaflet-popup-content-wrapper",
+              );
+              const tip = popupElement.querySelector(".leaflet-popup-tip");
+              if (wrapper) wrapper.style.transform = `scale(${scale})`;
+              if (tip) tip.style.transform = `scale(${scale})`;
             }
           }
         }
@@ -511,7 +516,12 @@ document.addEventListener("DOMContentLoaded", async () => {
               const scale = getZoomScale();
               const popupElement = e.popup.getElement();
               if (popupElement) {
-                popupElement.style.transform = `scale(${scale})`;
+                const wrapper = popupElement.querySelector(
+                  ".leaflet-popup-content-wrapper",
+                );
+                const tip = popupElement.querySelector(".leaflet-popup-tip");
+                if (wrapper) wrapper.style.transform = `scale(${scale})`;
+                if (tip) tip.style.transform = `scale(${scale})`;
               }
             });
           }
