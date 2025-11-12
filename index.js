@@ -420,43 +420,43 @@ document.addEventListener("DOMContentLoaded", async () => {
               created_by_username: hotspot.created_by_username,
             });
 
-            // Create popup with improved design using inline styles
+            // Create popup with improved design using CSS classes
             const popupContent = `
-              <div style="min-width: 280px; max-width: 320px; background: #18181b; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+              <div class="popup-container">
                 ${
                   photoUrl
                     ? `
-                  <div style="position: relative; height: 160px; overflow: hidden;">
-                    <img src="${photoUrl}" alt="${hotspot.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.style.display='none'"/>
-                    <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(24, 24, 27, 0.8) 0%, transparent 100%);"></div>
+                  <div class="popup-photo">
+                    <img src="${photoUrl}" alt="${hotspot.name}" onerror="this.parentElement.style.display='none'"/>
+                    <div class="popup-photo-overlay"></div>
                   </div>
                 `
                     : ""
                 }
 
-                <div style="padding: 16px;">
-                  <h3 style="font-weight: 700; font-size: 18px; color: #f4f4f5; margin-bottom: 8px;">${hotspot.name || "Wi-Fi Hotspot"}</h3>
+                <div class="popup-content">
+                  <h3 class="popup-title">${hotspot.name || "Wi-Fi Hotspot"}</h3>
 
                   ${
                     hotspot.address_text
                       ? `
-                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px;">
-                      <svg style="width: 16px; height: 16px; color: #a1a1aa; margin-top: 2px; flex-shrink: 0;" fill="currentColor" viewBox="0 0 20 20">
+                    <div class="popup-address">
+                      <svg fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
                       </svg>
-                      <p style="font-size: 14px; color: #a1a1aa;">${hotspot.address_text}</p>
+                      <p>${hotspot.address_text}</p>
                     </div>
                   `
                       : ""
                   }
 
-                  <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px;">
+                  <div class="popup-stats">
                     ${
                       hotspot.avg_speed_score
                         ? `
-                      <div style="display: flex; align-items: center; gap: 8px; background: #27272a; border-radius: 8px; padding: 8px 12px;">
-                        <span style="color: #facc15;">⚡</span>
-                        <span style="font-size: 14px; color: #d4d4d8;">Speed: <span style="font-weight: 500; color: #f4f4f5;">${getSpeedLabel(hotspot.avg_speed_score)}</span></span>
+                      <div class="popup-stat-item">
+                        <span>⚡</span>
+                        <span class="popup-stat-label">Speed: <span class="popup-stat-value">${getSpeedLabel(hotspot.avg_speed_score)}</span></span>
                       </div>
                     `
                         : ""
@@ -464,9 +464,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     ${
                       hotspot.noise_level
                         ? `
-                      <div style="display: flex; align-items: center; gap: 8px; background: #27272a; border-radius: 8px; padding: 8px 12px;">
-                        <span style="color: #c084fc;">🔊</span>
-                        <span style="font-size: 14px; color: #d4d4d8;">Noise: <span style="font-weight: 500; color: #f4f4f5;">${hotspot.noise_level}</span></span>
+                      <div class="popup-stat-item">
+                        <span>🔊</span>
+                        <span class="popup-stat-label">Noise: <span class="popup-stat-value">${hotspot.noise_level}</span></span>
                       </div>
                     `
                         : ""
@@ -474,26 +474,26 @@ document.addEventListener("DOMContentLoaded", async () => {
                     ${
                       hotspot.security_rating
                         ? `
-                      <div style="display: flex; align-items: center; gap: 8px; background: #27272a; border-radius: 8px; padding: 8px 12px;">
-                        <span style="color: #4ade80;">🔒</span>
-                        <span style="font-size: 14px; color: #d4d4d8;">Security: <span style="font-weight: 500; color: #f4f4f5;">${hotspot.security_rating.replace(/_/g, " ")}</span></span>
+                      <div class="popup-stat-item">
+                        <span>🔒</span>
+                        <span class="popup-stat-label">Security: <span class="popup-stat-value">${hotspot.security_rating.replace(/_/g, " ")}</span></span>
                       </div>
                     `
                         : ""
                     }
                   </div>
 
-                  <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #3f3f46;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <div style="width: 28px; height: 28px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 600;">
+                  <div class="popup-footer">
+                    <div class="popup-creator">
+                      <div class="popup-avatar">
                         ${creatorName.charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <p style="font-size: 11px; color: #71717a;">Added by</p>
-                        <p style="font-size: 14px; color: #e4e4e7; font-weight: 500;">${creatorName}</p>
+                      <div class="popup-creator-info">
+                        <p>Added by</p>
+                        <p class="popup-creator-name">${creatorName}</p>
                       </div>
                     </div>
-                    ${hotspot.created_at ? `<p style="font-size: 11px; color: #71717a;">${formatDate(hotspot.created_at)}</p>` : ""}
+                    ${hotspot.created_at ? `<p class="popup-date">${formatDate(hotspot.created_at)}</p>` : ""}
                   </div>
 
                   <button style="margin-top: 16px; width: 100%; padding: 10px 16px; background: #2563eb; color: white; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="viewHotspotDetails(${hotspot.id})">

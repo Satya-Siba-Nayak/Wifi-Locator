@@ -25,29 +25,13 @@ class SupabaseDBService {
    */
   async getLiveHotspots() {
     try {
-      // Get ALL hotspots from base table (not just those with reports in last 30 days)
-      // This ensures newly added hotspots show up immediately without needing a report
+      // Fetch ALL hotspots with creator profile info and photos in one query
       const { data: hotspotData, error: hotspotError } = await this.supabase
         .from("hotspots")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (hotspotError) throw hotspotError;
-
-      console.log("📦 Fetched hotspots from database:", hotspotData);
-
-      // Get hotspot IDs to fetch creator info
-      const hotspotIds = hotspotData.map((h) => h.id);
-
-      // Fetch hotspots with creator info and photos from the base table
-      const { data: hotspotsWithCreators, error: creatorError } =
-        await this.supabase
-          .from("hotspots")
-          .select(
-            `
-          id,
-          created_by,
-          profiles:created_by (
+        .select(
+          `
+          *,
+          profiles!hotspots_created_by_fkey (
             username,
             id
           ),
@@ -57,25 +41,27 @@ class SupabaseDBService {
             display_order
           )
         `,
-          )
-          .in("id", hotspotIds);
+        )
+        .order("created_at", { ascending: false });
 
-      if (creatorError) {
-        console.warn("Could not fetch creator info:", creatorError);
+      if (hotspotError) {
+        console.error("❌ Error fetching hotspots:", hotspotError);
+        throw hotspotError;
       }
 
-      // Merge creator info and photos with hotspot data
+      console.log("📦 Fetched hotspots from database:", hotspotData);
+
+      // Process and format hotspot data
       const hotspots = hotspotData.map((spot) => {
-        const creatorInfo = hotspotsWithCreators?.find((h) => h.id === spot.id);
-        const profile = creatorInfo?.profiles;
-        const photos = creatorInfo?.hotspot_photos || [];
+        const profile = spot.profiles;
+        const photos = spot.hotspot_photos || [];
 
         console.log(`🔍 Debug hotspot ${spot.id}:`, {
-          creatorInfo,
           profile,
           username: profile?.username,
           photos,
           photoCount: photos.length,
+          created_by: spot.created_by,
         });
 
         // Sort photos by display_order and get first photo
@@ -89,12 +75,13 @@ class SupabaseDBService {
           latitude: this.extractLatitude(spot.location),
           longitude: this.extractLongitude(spot.location),
           created_by_username: profile?.username || null,
-          created_by_id: creatorInfo?.created_by || null,
+          created_by_id: spot.created_by,
           photos: sortedPhotos,
           first_photo_path: firstPhoto?.storage_path || null,
         };
       });
 
+      console.log("✅ Processed hotspots:", hotspots);
       return { success: true, data: hotspots };
     } catch (error) {
       console.error("Error fetching live hotspots:", error);
