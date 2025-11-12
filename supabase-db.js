@@ -25,12 +25,16 @@ class SupabaseDBService {
    */
   async getLiveHotspots() {
     try {
-      // First get hotspots from the view
+      // Get ALL hotspots from base table (not just those with reports in last 30 days)
+      // This ensures newly added hotspots show up immediately without needing a report
       const { data: hotspotData, error: hotspotError } = await this.supabase
-        .from("live_hotspot_data")
-        .select("*");
+        .from("hotspots")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (hotspotError) throw hotspotError;
+
+      console.log("📦 Fetched hotspots from database:", hotspotData);
 
       // Get hotspot IDs to fetch creator info
       const hotspotIds = hotspotData.map((h) => h.id);

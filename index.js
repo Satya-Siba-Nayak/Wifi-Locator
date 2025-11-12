@@ -413,43 +413,43 @@ document.addEventListener("DOMContentLoaded", async () => {
               ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
               : null;
 
-            // Create popup with improved design matching app aesthetics
+            // Create popup with improved design using inline styles
             const popupContent = `
-              <div class="popup-content bg-zinc-900 rounded-xl overflow-hidden shadow-2xl" style="min-width: 280px; max-width: 320px;">
+              <div style="min-width: 280px; max-width: 320px; background: #18181b; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
                 ${
                   photoUrl
                     ? `
-                  <div class="relative h-40 overflow-hidden">
-                    <img src="${photoUrl}" alt="${hotspot.name}" class="w-full h-full object-cover" onerror="this.parentElement.style.display='none'"/>
-                    <div class="absolute inset-0 bg-gradient-to-t from-zinc-900/80 to-transparent"></div>
+                  <div style="position: relative; height: 160px; overflow: hidden;">
+                    <img src="${photoUrl}" alt="${hotspot.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.style.display='none'"/>
+                    <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(24, 24, 27, 0.8) 0%, transparent 100%);"></div>
                   </div>
                 `
                     : ""
                 }
 
-                <div class="p-4">
-                  <h3 class="font-bold text-lg text-zinc-100 mb-2">${hotspot.name || "Wi-Fi Hotspot"}</h3>
+                <div style="padding: 16px;">
+                  <h3 style="font-weight: 700; font-size: 18px; color: #f4f4f5; margin-bottom: 8px;">${hotspot.name || "Wi-Fi Hotspot"}</h3>
 
                   ${
                     hotspot.address_text
                       ? `
-                    <div class="flex items-start gap-2 mb-3">
-                      <svg class="w-4 h-4 text-zinc-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px;">
+                      <svg style="width: 16px; height: 16px; color: #a1a1aa; margin-top: 2px; flex-shrink: 0;" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
                       </svg>
-                      <p class="text-sm text-zinc-400">${hotspot.address_text}</p>
+                      <p style="font-size: 14px; color: #a1a1aa;">${hotspot.address_text}</p>
                     </div>
                   `
                       : ""
                   }
 
-                  <div class="grid grid-cols-1 gap-2 mb-3">
+                  <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px;">
                     ${
                       hotspot.avg_speed_score
                         ? `
-                      <div class="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
-                        <span class="text-yellow-400">⚡</span>
-                        <span class="text-sm text-zinc-300">Speed: <span class="font-medium text-zinc-100">${getSpeedLabel(hotspot.avg_speed_score)}</span></span>
+                      <div style="display: flex; align-items: center; gap: 8px; background: #27272a; border-radius: 8px; padding: 8px 12px;">
+                        <span style="color: #facc15;">⚡</span>
+                        <span style="font-size: 14px; color: #d4d4d8;">Speed: <span style="font-weight: 500; color: #f4f4f5;">${getSpeedLabel(hotspot.avg_speed_score)}</span></span>
                       </div>
                     `
                         : ""
@@ -457,9 +457,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     ${
                       hotspot.noise_level
                         ? `
-                      <div class="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
-                        <span class="text-purple-400">🔊</span>
-                        <span class="text-sm text-zinc-300">Noise: <span class="font-medium text-zinc-100">${hotspot.noise_level}</span></span>
+                      <div style="display: flex; align-items: center; gap: 8px; background: #27272a; border-radius: 8px; padding: 8px 12px;">
+                        <span style="color: #c084fc;">🔊</span>
+                        <span style="font-size: 14px; color: #d4d4d8;">Noise: <span style="font-weight: 500; color: #f4f4f5;">${hotspot.noise_level}</span></span>
                       </div>
                     `
                         : ""
@@ -467,29 +467,29 @@ document.addEventListener("DOMContentLoaded", async () => {
                     ${
                       hotspot.security_rating
                         ? `
-                      <div class="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
-                        <span class="text-green-400">🔒</span>
-                        <span class="text-sm text-zinc-300">Security: <span class="font-medium text-zinc-100">${hotspot.security_rating.replace(/_/g, " ")}</span></span>
+                      <div style="display: flex; align-items: center; gap: 8px; background: #27272a; border-radius: 8px; padding: 8px 12px;">
+                        <span style="color: #4ade80;">🔒</span>
+                        <span style="font-size: 14px; color: #d4d4d8;">Security: <span style="font-weight: 500; color: #f4f4f5;">${hotspot.security_rating.replace(/_/g, " ")}</span></span>
                       </div>
                     `
                         : ""
                     }
                   </div>
 
-                  <div class="flex items-center justify-between pt-3 border-t border-zinc-700">
-                    <div class="flex items-center gap-2">
-                      <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
+                  <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #3f3f46;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 28px; height: 28px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 600;">
                         ${creatorName.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p class="text-xs text-zinc-500">Added by</p>
-                        <p class="text-sm text-zinc-200 font-medium">${creatorName}</p>
+                        <p style="font-size: 11px; color: #71717a;">Added by</p>
+                        <p style="font-size: 14px; color: #e4e4e7; font-weight: 500;">${creatorName}</p>
                       </div>
                     </div>
-                    ${hotspot.created_at ? `<p class="text-xs text-zinc-500">${formatDate(hotspot.created_at)}</p>` : ""}
+                    ${hotspot.created_at ? `<p style="font-size: 11px; color: #71717a;">${formatDate(hotspot.created_at)}</p>` : ""}
                   </div>
 
-                  <button class="mt-4 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors" onclick="viewHotspotDetails(${hotspot.id})">
+                  <button style="margin-top: 16px; width: 100%; padding: 10px 16px; background: #2563eb; color: white; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="viewHotspotDetails(${hotspot.id})">
                     View Full Details
                   </button>
                 </div>
