@@ -341,6 +341,70 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadHotspots();
   };
 
+  // Calculate scale factor based on zoom level
+  const getZoomScale = () => {
+    const zoom = map.getZoom();
+    // Scale from 0.6 at zoom 10 to 1.2 at zoom 18
+    // zoom 10-12: small (0.6-0.75)
+    // zoom 13-15: medium (0.8-1.0)
+    // zoom 16-18: large (1.05-1.2)
+    if (zoom <= 10) return 0.6;
+    if (zoom >= 18) return 1.2;
+    return 0.6 + ((zoom - 10) / 8) * 0.6;
+  };
+
+  // Create marker icon with scale
+  const createMarkerIcon = (scale = 1) => {
+    const baseSize = 48;
+    const baseHeight = 56;
+    const scaledSize = baseSize * scale;
+    const scaledHeight = baseHeight * scale;
+    const svgSize = 28 * scale;
+    const borderWidth = Math.max(2, 3 * scale);
+    const borderRadius = 12 * scale;
+
+    return L.divIcon({
+      className: "custom-marker",
+      html: `
+        <div style="position: relative; width: ${scaledSize}px; height: ${scaledHeight}px;">
+          <div style="
+            width: ${scaledSize}px;
+            height: ${scaledSize}px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: ${borderRadius}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            border: ${borderWidth}px solid white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          " class="wifi-marker">
+            <svg style="width: ${svgSize}px; height: ${svgSize}px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
+            </svg>
+          </div>
+          <div style="
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: ${8 * scale}px solid transparent;
+            border-right: ${8 * scale}px solid transparent;
+            border-top: ${8 * scale}px solid #2563eb;
+          "></div>
+        </div>
+      `,
+      iconSize: [scaledSize, scaledHeight],
+      iconAnchor: [scaledSize / 2, scaledHeight],
+    });
+  };
+
+  // Store all markers globally for zoom updates
+  window.hotspotsMarkers = [];
+
   // Load and display hotspots from database
   const loadHotspots = async () => {
     console.log("🔍 Starting to load hotspots...");
@@ -361,45 +425,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           console.log(`🔨 Creating marker ${index + 1}:`, hotspot);
           if (hotspot.latitude && hotspot.longitude) {
             // Create custom marker for hotspot with improved design
+            const scale = getZoomScale();
             const marker = L.marker([hotspot.latitude, hotspot.longitude], {
-              icon: L.divIcon({
-                className: "custom-marker",
-                html: `
-                  <div style="position: relative; width: 48px; height: 56px;">
-                    <div style="
-                      width: 48px;
-                      height: 48px;
-                      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                      border-radius: 12px;
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-                      border: 3px solid white;
-                      cursor: pointer;
-                      transition: all 0.3s ease;
-                    " class="wifi-marker">
-                      <svg style="width: 28px; height: 28px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
-                      </svg>
-                    </div>
-                    <div style="
-                      position: absolute;
-                      bottom: 0;
-                      left: 50%;
-                      transform: translateX(-50%);
-                      width: 0;
-                      height: 0;
-                      border-left: 8px solid transparent;
-                      border-right: 8px solid transparent;
-                      border-top: 8px solid #2563eb;
-                    "></div>
-                  </div>
-                `,
-                iconSize: [48, 56],
-                iconAnchor: [24, 56],
-              }),
+              icon: createMarkerIcon(scale),
             }).addTo(map);
+
+            // Store marker with hotspot data for zoom updates
+            marker.hotspotData = hotspot;
+            window.hotspotsMarkers.push(marker);
 
             console.log(
               `✅ Marker ${index + 1} added to map at [${hotspot.latitude}, ${hotspot.longitude}]`,
@@ -415,96 +448,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             console.log(`📸 Photo debug for hotspot ${hotspot.id}:`, {
               first_photo_path: hotspot.first_photo_path,
-              photoUrl: photoUrl,
-              creatorName: creatorName,
+              photoUrl: hotspot.first_photo_path
+                ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+                : null,
+              creatorName: hotspot.created_by_username || "Anonymous",
               created_by_username: hotspot.created_by_username,
             });
 
             // Create popup with improved design using CSS classes
-            const popupContent = `
-              <div class="popup-container">
-                ${
-                  photoUrl
-                    ? `
-                  <div class="popup-photo">
-                    <img src="${photoUrl}" alt="${hotspot.name}" onerror="this.parentElement.style.display='none'"/>
-                    <div class="popup-photo-overlay"></div>
-                  </div>
-                `
-                    : ""
-                }
+            const popupScale = getZoomScale();
+            const popupContent = generatePopupContent(hotspot, popupScale);
 
-                <div class="popup-content">
-                  <h3 class="popup-title">${hotspot.name || "Wi-Fi Hotspot"}</h3>
-
-                  ${
-                    hotspot.address_text
-                      ? `
-                    <div class="popup-address">
-                      <svg fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-                      </svg>
-                      <p>${hotspot.address_text}</p>
-                    </div>
-                  `
-                      : ""
-                  }
-
-                  <div class="popup-stats">
-                    ${
-                      hotspot.avg_speed_score
-                        ? `
-                      <div class="popup-stat-item">
-                        <span>⚡</span>
-                        <span class="popup-stat-label">Speed: <span class="popup-stat-value">${getSpeedLabel(hotspot.avg_speed_score)}</span></span>
-                      </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      hotspot.noise_level
-                        ? `
-                      <div class="popup-stat-item">
-                        <span>🔊</span>
-                        <span class="popup-stat-label">Noise: <span class="popup-stat-value">${hotspot.noise_level}</span></span>
-                      </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      hotspot.security_rating
-                        ? `
-                      <div class="popup-stat-item">
-                        <span>🔒</span>
-                        <span class="popup-stat-label">Security: <span class="popup-stat-value">${hotspot.security_rating.replace(/_/g, " ")}</span></span>
-                      </div>
-                    `
-                        : ""
-                    }
-                  </div>
-
-                  <div class="popup-footer">
-                    <div class="popup-creator">
-                      <div class="popup-avatar">
-                        ${creatorName.charAt(0).toUpperCase()}
-                      </div>
-                      <div class="popup-creator-info">
-                        <p>Added by</p>
-                        <p class="popup-creator-name">${creatorName}</p>
-                      </div>
-                    </div>
-                    ${hotspot.created_at ? `<p class="popup-date">${formatDate(hotspot.created_at)}</p>` : ""}
-                  </div>
-
-                  <button style="margin-top: 16px; width: 100%; padding: 10px 16px; background: #2563eb; color: white; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="viewHotspotDetails(${hotspot.id})">
-                    View Full Details
-                  </button>
-                </div>
-              </div>
-            `;
+            // Calculate popup width based on zoom
+            const zoom = map.getZoom();
+            const popupScale = getZoomScale();
+            const baseMaxWidth = 320;
+            const scaledMaxWidth = Math.floor(baseMaxWidth * popupScale);
 
             marker.bindPopup(popupContent, {
-              maxWidth: 320,
+              maxWidth: scaledMaxWidth,
+              minWidth: Math.floor(280 * popupScale),
               className: "custom-popup-leaflet",
               closeButton: true,
             });
@@ -515,6 +478,126 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error("Error loading hotspots:", error);
     }
   };
+
+  // Generate popup content for a hotspot
+  const generatePopupContent = (hotspot, scale) => {
+    const creatorName = hotspot.created_by_username || "Anonymous";
+    const photoUrl = hotspot.first_photo_path
+      ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+      : null;
+
+    return `
+      <div class="popup-container" style="transform: scale(${scale});">
+        ${
+          photoUrl
+            ? `
+          <div class="popup-photo">
+            <img src="${photoUrl}" alt="${hotspot.name}" onerror="this.parentElement.style.display='none'"/>
+            <div class="popup-photo-overlay"></div>
+          </div>
+        `
+            : ""
+        }
+
+        <div class="popup-content">
+          <h3 class="popup-title">${hotspot.name || "Wi-Fi Hotspot"}</h3>
+
+          ${
+            hotspot.address_text
+              ? `
+            <div class="popup-address">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+              </svg>
+              <p>${hotspot.address_text}</p>
+            </div>
+          `
+              : ""
+          }
+
+          <div class="popup-stats">
+            ${
+              hotspot.avg_speed_score
+                ? `
+              <div class="popup-stat-item">
+                <span>⚡</span>
+                <span class="popup-stat-label">Speed: <span class="popup-stat-value">${getSpeedLabel(hotspot.avg_speed_score)}</span></span>
+              </div>
+            `
+                : ""
+            }
+            ${
+              hotspot.noise_level
+                ? `
+              <div class="popup-stat-item">
+                <span>🔊</span>
+                <span class="popup-stat-label">Noise: <span class="popup-stat-value">${hotspot.noise_level}</span></span>
+              </div>
+            `
+                : ""
+            }
+            ${
+              hotspot.security_rating
+                ? `
+              <div class="popup-stat-item">
+                <span>🔒</span>
+                <span class="popup-stat-label">Security: <span class="popup-stat-value">${hotspot.security_rating.replace(/_/g, " ")}</span></span>
+              </div>
+            `
+                : ""
+            }
+          </div>
+
+          <div class="popup-footer">
+            <div class="popup-creator">
+              <div class="popup-avatar">
+                ${creatorName.charAt(0).toUpperCase()}
+              </div>
+              <div class="popup-creator-info">
+                <p>Added by</p>
+                <p class="popup-creator-name">${creatorName}</p>
+              </div>
+            </div>
+            ${hotspot.created_at ? `<p class="popup-date">${formatDate(hotspot.created_at)}</p>` : ""}
+          </div>
+
+          <button style="margin-top: 16px; width: 100%; padding: 10px 16px; background: #2563eb; color: white; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="viewHotspotDetails(${hotspot.id})">
+            View Full Details
+          </button>
+        </div>
+      </div>
+    `;
+  };
+
+  // Update marker and popup sizes on zoom
+  map.on("zoomend", () => {
+    const scale = getZoomScale();
+    console.log(
+      `🔍 Zoom changed to ${map.getZoom()}, scale: ${scale.toFixed(2)}`,
+    );
+
+    // Update all marker icons and popups
+    window.hotspotsMarkers.forEach((marker) => {
+      marker.setIcon(createMarkerIcon(scale));
+
+      // Update popup content with new scale
+      const popup = marker.getPopup();
+      if (popup && marker.hotspotData) {
+        const newContent = generatePopupContent(marker.hotspotData, scale);
+        popup.setContent(newContent);
+
+        const baseMaxWidth = 320;
+        const scaledMaxWidth = Math.floor(baseMaxWidth * scale);
+        popup.options.maxWidth = scaledMaxWidth;
+        popup.options.minWidth = Math.floor(280 * scale);
+
+        // If popup is open, update it
+        if (popup.isOpen()) {
+          popup.update();
+        }
+      }
+    });
+  });
 
   // Helper function to convert speed score to label
   const getSpeedLabel = (score) => {
