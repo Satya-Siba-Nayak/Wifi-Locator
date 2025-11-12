@@ -368,8 +368,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                 ".leaflet-popup-content-wrapper",
               );
               const tip = popupElement.querySelector(".leaflet-popup-tip");
+              const closeButton = popupElement.querySelector(
+                ".leaflet-popup-close-button",
+              );
+
               if (wrapper) wrapper.style.transform = `scale(${scale})`;
               if (tip) tip.style.transform = `scale(${scale})`;
+              if (closeButton) {
+                closeButton.style.transform = `scale(${scale})`;
+                closeButton.style.transformOrigin = "top right";
+              }
             }
           }
         }
@@ -520,8 +528,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                   ".leaflet-popup-content-wrapper",
                 );
                 const tip = popupElement.querySelector(".leaflet-popup-tip");
+                const closeButton = popupElement.querySelector(
+                  ".leaflet-popup-close-button",
+                );
+
                 if (wrapper) wrapper.style.transform = `scale(${scale})`;
                 if (tip) tip.style.transform = `scale(${scale})`;
+                if (closeButton) {
+                  closeButton.style.transform = `scale(${scale})`;
+                  closeButton.style.transformOrigin = "top right";
+                }
               }
             });
           }

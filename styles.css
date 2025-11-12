@@ -143,7 +143,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition:
+        transform 0.2s ease-out,
+        background 0.2s,
+        color 0.2s;
+    transform-origin: top right;
 }
 
 .custom-popup-leaflet .leaflet-popup-close-button:hover {
