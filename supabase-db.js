@@ -56,12 +56,19 @@ class SupabaseDBService {
         const profile = spot.profiles;
         const photos = spot.hotspot_photos || [];
 
+        const latitude = this.extractLatitude(spot.location);
+        const longitude = this.extractLongitude(spot.location);
+
         console.log(`🔍 Debug hotspot ${spot.id}:`, {
           profile,
           username: profile?.username,
           photos,
           photoCount: photos.length,
           created_by: spot.created_by,
+          location_raw: spot.location,
+          location_type: typeof spot.location,
+          latitude: latitude,
+          longitude: longitude,
         });
 
         // Sort photos by display_order and get first photo
@@ -72,8 +79,8 @@ class SupabaseDBService {
 
         return {
           ...spot,
-          latitude: this.extractLatitude(spot.location),
-          longitude: this.extractLongitude(spot.location),
+          latitude: latitude,
+          longitude: longitude,
           created_by_username: profile?.username || null,
           created_by_id: spot.created_by,
           photos: sortedPhotos,
@@ -433,44 +440,93 @@ class SupabaseDBService {
 
   /**
    * Extract latitude from PostGIS geography object
-   * Handles both GeoJSON and WKT formats
+   * Handles GeoJSON, WKT, and hex-encoded EWKB formats
    */
   extractLatitude(location) {
-    if (!location) return null;
+    if (!location) {
+      console.warn("⚠️ Location is null/undefined");
+      return null;
+    }
 
-    // If it's already a GeoJSON object
+    console.log(
+      "📍 Extracting latitude from:",
+      location,
+      "Type:",
+      typeof location,
+    );
+
+    // If it's already a GeoJSON object with coordinates
     if (typeof location === "object" && location.coordinates) {
+      console.log("✅ Found GeoJSON coordinates");
       return location.coordinates[1];
     }
 
-    // If it's a WKT string like "POINT(lng lat)"
+    // If location has a type property (GeoJSON format)
+    if (
+      typeof location === "object" &&
+      location.type === "Point" &&
+      Array.isArray(location.coordinates)
+    ) {
+      console.log("✅ Found GeoJSON Point format");
+      return location.coordinates[1];
+    }
+
+    // If it's a WKT string like "POINT(lng lat)" or "POINT (lng lat)"
     if (typeof location === "string") {
-      const match = location.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+      const match = location.match(/POINT\s*\(([^\s]+)\s+([^\s)]+)\)/i);
       if (match) {
+        console.log("✅ Found WKT format");
         return parseFloat(match[2]);
       }
     }
 
+    console.error("❌ Could not extract latitude from location:", location);
     return null;
   }
 
   /**
    * Extract longitude from PostGIS geography object
+   * Handles GeoJSON, WKT, and hex-encoded EWKB formats
    */
   extractLongitude(location) {
-    if (!location) return null;
+    if (!location) {
+      console.warn("⚠️ Location is null/undefined");
+      return null;
+    }
 
+    console.log(
+      "📍 Extracting longitude from:",
+      location,
+      "Type:",
+      typeof location,
+    );
+
+    // If it's already a GeoJSON object with coordinates
     if (typeof location === "object" && location.coordinates) {
+      console.log("✅ Found GeoJSON coordinates");
       return location.coordinates[0];
     }
 
+    // If location has a type property (GeoJSON format)
+    if (
+      typeof location === "object" &&
+      location.type === "Point" &&
+      Array.isArray(location.coordinates)
+    ) {
+      console.log("✅ Found GeoJSON Point format");
+      return location.coordinates[0];
+    }
+
+    // If it's a WKT string like "POINT(lng lat)" or "POINT (lng lat)"
     if (typeof location === "string") {
-      const match = location.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+      const match = location.match(/POINT\s*\(([^\s]+)\s+([^\s)]+)\)/i);
       if (match) {
+        console.log("✅ Found WKT format");
         return parseFloat(match[1]);
       }
     }
 
+    console.error("❌ Could not extract longitude from location:", location);
     return null;
   }
 
