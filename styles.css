@@ -188,6 +188,13 @@ body {
     transition: transform 0.2s ease-out !important;
 }
 
+/* Popup Scale Wrapper - scales content without affecting positioning */
+.popup-scale-wrapper {
+    display: inline-block;
+    transform-origin: bottom center;
+    transition: transform 0.2s ease-out;
+}
+
 /* Popup Content Styling */
 .popup-container {
     min-width: 280px;
@@ -196,8 +203,6 @@ body {
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    transform-origin: center;
-    transition: transform 0.3s ease;
 }
 
 .popup-photo {

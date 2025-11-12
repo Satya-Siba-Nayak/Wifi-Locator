@@ -359,12 +359,18 @@ document.addEventListener("DOMContentLoaded", async () => {
           popup.options.maxWidth = scaledMaxWidth;
           popup.options.minWidth = Math.floor(280 * scale);
 
-          // If popup is open, update its zoom scale
+          // If popup is open, update its scale
           if (popup.isOpen()) {
             const popupElement = popup.getElement();
             if (popupElement) {
-              // Use CSS zoom property to scale everything together
-              popupElement.style.zoom = scale;
+              // Scale the inner wrapper instead of entire popup to preserve positioning
+              const scaleWrapper = popupElement.querySelector(
+                ".popup-scale-wrapper",
+              );
+              if (scaleWrapper) {
+                scaleWrapper.style.transform = `scale(${scale})`;
+                scaleWrapper.style.transformOrigin = "bottom center";
+              }
             }
             popup.update();
           }
@@ -512,8 +518,14 @@ document.addEventListener("DOMContentLoaded", async () => {
               const scale = getZoomScale();
               const popupElement = e.popup.getElement();
               if (popupElement) {
-                // Use CSS zoom property to scale everything together
-                popupElement.style.zoom = scale;
+                // Scale the inner wrapper instead of entire popup to preserve positioning
+                const scaleWrapper = popupElement.querySelector(
+                  ".popup-scale-wrapper",
+                );
+                if (scaleWrapper) {
+                  scaleWrapper.style.transform = `scale(${scale})`;
+                  scaleWrapper.style.transformOrigin = "bottom center";
+                }
               }
             });
           }
@@ -532,7 +544,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       : null;
 
     return `
-      <div class="popup-container">
+      <div class="popup-scale-wrapper">
+        <div class="popup-container">
         ${
           photoUrl
             ? `
@@ -609,6 +622,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <button style="margin-top: 16px; width: 100%; padding: 10px 16px; background: #2563eb; color: white; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="viewHotspotDetails(${hotspot.id})">
             View Full Details
           </button>
+        </div>
         </div>
       </div>
     `;
