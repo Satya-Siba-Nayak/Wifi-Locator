@@ -35,7 +35,7 @@ class SupabaseDBService {
       // Get hotspot IDs to fetch creator info
       const hotspotIds = hotspotData.map((h) => h.id);
 
-      // Fetch hotspots with creator info from the base table
+      // Fetch hotspots with creator info and photos from the base table
       const { data: hotspotsWithCreators, error: creatorError } =
         await this.supabase
           .from("hotspots")
@@ -46,6 +46,11 @@ class SupabaseDBService {
           profiles:created_by (
             username,
             id
+          ),
+          hotspot_photos (
+            id,
+            storage_path,
+            display_order
           )
         `,
           )
@@ -55,10 +60,17 @@ class SupabaseDBService {
         console.warn("Could not fetch creator info:", creatorError);
       }
 
-      // Merge creator info with hotspot data
+      // Merge creator info and photos with hotspot data
       const hotspots = hotspotData.map((spot) => {
         const creatorInfo = hotspotsWithCreators?.find((h) => h.id === spot.id);
         const profile = creatorInfo?.profiles;
+        const photos = creatorInfo?.hotspot_photos || [];
+
+        // Sort photos by display_order and get first photo
+        const sortedPhotos = photos.sort(
+          (a, b) => a.display_order - b.display_order,
+        );
+        const firstPhoto = sortedPhotos[0];
 
         return {
           ...spot,
@@ -66,6 +78,8 @@ class SupabaseDBService {
           longitude: this.extractLongitude(spot.location),
           created_by_username: profile?.username || null,
           created_by_id: creatorInfo?.created_by || null,
+          photos: sortedPhotos,
+          first_photo_path: firstPhoto?.storage_path || null,
         };
       });
 
@@ -400,6 +414,20 @@ class SupabaseDBService {
       console.error("Error awarding points:", error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Get public URL for a photo in Supabase Storage
+   * @param {string} storagePath - Path in the storage bucket
+   */
+  getPhotoUrl(storagePath) {
+    if (!storagePath) return null;
+
+    const { data } = this.supabase.storage
+      .from("hotspot-photos")
+      .getPublicUrl(storagePath);
+
+    return data?.publicUrl || null;
   }
 
   // ==================== HELPER FUNCTIONS ====================

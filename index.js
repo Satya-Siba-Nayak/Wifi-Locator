@@ -351,48 +351,120 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         result.data.forEach((hotspot) => {
           if (hotspot.latitude && hotspot.longitude) {
-            // Create custom marker for hotspot
+            // Create custom marker for hotspot with improved design
             const marker = L.marker([hotspot.latitude, hotspot.longitude], {
               icon: L.divIcon({
                 className: "custom-marker",
-                html: `<div class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg transition-colors cursor-pointer border-2 border-white">📶</div>`,
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
+                html: `
+                  <div class="wifi-marker-container relative">
+                    <div class="wifi-marker bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl w-12 h-12 flex items-center justify-center shadow-xl border-3 border-white transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:from-blue-600 hover:to-blue-700">
+                      <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                      </svg>
+                    </div>
+                    <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-600"></div>
+                  </div>
+                `,
+                iconSize: [48, 56],
+                iconAnchor: [24, 56],
               }),
             }).addTo(map);
 
-            // Get creator info (username or email)
-            const creatorName =
-              hotspot.created_by_username ||
-              hotspot.created_by_email ||
-              "Anonymous";
+            // Get creator info (username only, no email)
+            const creatorName = hotspot.created_by_username || "Anonymous";
 
-            // Create popup with hotspot info
+            // Get photo URL if available
+            const photoUrl = hotspot.first_photo_path
+              ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+              : null;
+
+            // Create popup with improved design matching app aesthetics
             const popupContent = `
-              <div class="p-3 min-w-[200px]">
-                <h3 class="font-bold text-lg text-zinc-900 mb-1">${hotspot.name || "Wi-Fi Hotspot"}</h3>
-                ${hotspot.address_text ? `<p class="text-sm text-zinc-600 mb-2">📍 ${hotspot.address_text}</p>` : ""}
+              <div class="popup-content bg-zinc-900 rounded-xl overflow-hidden shadow-2xl" style="min-width: 280px; max-width: 320px;">
+                ${
+                  photoUrl
+                    ? `
+                  <div class="relative h-40 overflow-hidden">
+                    <img src="${photoUrl}" alt="${hotspot.name}" class="w-full h-full object-cover" onerror="this.parentElement.style.display='none'"/>
+                    <div class="absolute inset-0 bg-gradient-to-t from-zinc-900/80 to-transparent"></div>
+                  </div>
+                `
+                    : ""
+                }
 
-                <div class="space-y-1 text-xs text-zinc-700">
-                  ${hotspot.avg_speed_score ? `<p>⚡ Speed: ${getSpeedLabel(hotspot.avg_speed_score)}</p>` : ""}
-                  ${hotspot.noise_level ? `<p>🔊 Noise: ${hotspot.noise_level}</p>` : ""}
-                  ${hotspot.security_rating ? `<p>🔒 Security: ${hotspot.security_rating}</p>` : ""}
+                <div class="p-4">
+                  <h3 class="font-bold text-lg text-zinc-100 mb-2">${hotspot.name || "Wi-Fi Hotspot"}</h3>
+
+                  ${
+                    hotspot.address_text
+                      ? `
+                    <div class="flex items-start gap-2 mb-3">
+                      <svg class="w-4 h-4 text-zinc-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                      </svg>
+                      <p class="text-sm text-zinc-400">${hotspot.address_text}</p>
+                    </div>
+                  `
+                      : ""
+                  }
+
+                  <div class="grid grid-cols-1 gap-2 mb-3">
+                    ${
+                      hotspot.avg_speed_score
+                        ? `
+                      <div class="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+                        <span class="text-yellow-400">⚡</span>
+                        <span class="text-sm text-zinc-300">Speed: <span class="font-medium text-zinc-100">${getSpeedLabel(hotspot.avg_speed_score)}</span></span>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      hotspot.noise_level
+                        ? `
+                      <div class="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+                        <span class="text-purple-400">🔊</span>
+                        <span class="text-sm text-zinc-300">Noise: <span class="font-medium text-zinc-100">${hotspot.noise_level}</span></span>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      hotspot.security_rating
+                        ? `
+                      <div class="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+                        <span class="text-green-400">🔒</span>
+                        <span class="text-sm text-zinc-300">Security: <span class="font-medium text-zinc-100">${hotspot.security_rating.replace(/_/g, " ")}</span></span>
+                      </div>
+                    `
+                        : ""
+                    }
+                  </div>
+
+                  <div class="flex items-center justify-between pt-3 border-t border-zinc-700">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
+                        ${creatorName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p class="text-xs text-zinc-500">Added by</p>
+                        <p class="text-sm text-zinc-200 font-medium">${creatorName}</p>
+                      </div>
+                    </div>
+                    ${hotspot.created_at ? `<p class="text-xs text-zinc-500">${formatDate(hotspot.created_at)}</p>` : ""}
+                  </div>
+
+                  <button class="mt-4 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors" onclick="viewHotspotDetails(${hotspot.id})">
+                    View Full Details
+                  </button>
                 </div>
-
-                <div class="mt-3 pt-2 border-t border-zinc-200">
-                  <p class="text-xs text-zinc-500">Added by: <span class="font-medium">${creatorName}</span></p>
-                  ${hotspot.created_at ? `<p class="text-xs text-zinc-400">${formatDate(hotspot.created_at)}</p>` : ""}
-                </div>
-
-                <button class="mt-3 w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors" onclick="viewHotspotDetails(${hotspot.id})">
-                  View Details
-                </button>
               </div>
             `;
 
             marker.bindPopup(popupContent, {
-              maxWidth: 300,
-              className: "custom-popup",
+              maxWidth: 320,
+              className: "custom-popup-leaflet",
+              closeButton: true,
             });
           }
         });

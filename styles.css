@@ -85,3 +85,84 @@ body {
 /* Layer 1: Map tiles and markers (z-1 to z-5) */
 /* Layer 2: Map buttons and sidebar (z-1000 to z-1001) */
 /* Layer 3: Full-screen overlays (z-2000) - Search and Profile */
+
+/* Custom WiFi Marker Styles */
+.wifi-marker-container {
+    cursor: pointer;
+}
+
+.wifi-marker {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* Custom Popup Styles - Dark Theme */
+.leaflet-popup-content-wrapper {
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0.75rem !important;
+    overflow: hidden;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    width: auto !important;
+}
+
+.custom-popup-leaflet .leaflet-popup-content-wrapper {
+    background: #18181b !important;
+    border: 1px solid #3f3f46;
+}
+
+.custom-popup-leaflet .leaflet-popup-tip {
+    background: #18181b !important;
+    border: 1px solid #3f3f46;
+    border-top: none;
+    border-right: none;
+}
+
+.custom-popup-leaflet .leaflet-popup-close-button {
+    color: #a1a1aa !important;
+    font-size: 24px !important;
+    padding: 8px 12px !important;
+    background: rgba(39, 39, 42, 0.8);
+    border-radius: 0.5rem;
+    margin: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.custom-popup-leaflet .leaflet-popup-close-button:hover {
+    color: #ffffff !important;
+    background: rgba(59, 130, 246, 0.8);
+}
+
+/* Popup animation */
+.leaflet-popup {
+    animation: popupFadeIn 0.3s ease-out;
+}
+
+@keyframes popupFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
