@@ -413,6 +413,13 @@ document.addEventListener("DOMContentLoaded", async () => {
               ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
               : null;
 
+            console.log(`📸 Photo debug for hotspot ${hotspot.id}:`, {
+              first_photo_path: hotspot.first_photo_path,
+              photoUrl: photoUrl,
+              creatorName: creatorName,
+              created_by_username: hotspot.created_by_username,
+            });
+
             // Create popup with improved design using inline styles
             const popupContent = `
               <div style="min-width: 280px; max-width: 320px; background: #18181b; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">

@@ -70,6 +70,14 @@ class SupabaseDBService {
         const profile = creatorInfo?.profiles;
         const photos = creatorInfo?.hotspot_photos || [];
 
+        console.log(`🔍 Debug hotspot ${spot.id}:`, {
+          creatorInfo,
+          profile,
+          username: profile?.username,
+          photos,
+          photoCount: photos.length,
+        });
+
         // Sort photos by display_order and get first photo
         const sortedPhotos = photos.sort(
           (a, b) => a.display_order - b.display_order,
