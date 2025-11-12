@@ -460,8 +460,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             const popupContent = generatePopupContent(hotspot, popupScale);
 
             // Calculate popup width based on zoom
-            const zoom = map.getZoom();
-            const popupScale = getZoomScale();
             const baseMaxWidth = 320;
             const scaledMaxWidth = Math.floor(baseMaxWidth * popupScale);
 
