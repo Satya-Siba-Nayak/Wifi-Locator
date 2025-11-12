@@ -356,13 +356,35 @@ document.addEventListener("DOMContentLoaded", async () => {
               icon: L.divIcon({
                 className: "custom-marker",
                 html: `
-                  <div class="wifi-marker-container relative">
-                    <div class="wifi-marker bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl w-12 h-12 flex items-center justify-center shadow-xl border-3 border-white transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:from-blue-600 hover:to-blue-700">
-                      <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                  <div style="position: relative; width: 48px; height: 56px;">
+                    <div style="
+                      width: 48px;
+                      height: 48px;
+                      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                      border-radius: 12px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+                      border: 3px solid white;
+                      cursor: pointer;
+                      transition: all 0.3s ease;
+                    " class="wifi-marker">
+                      <svg style="width: 28px; height: 28px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
                       </svg>
                     </div>
-                    <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-600"></div>
+                    <div style="
+                      position: absolute;
+                      bottom: 0;
+                      left: 50%;
+                      transform: translateX(-50%);
+                      width: 0;
+                      height: 0;
+                      border-left: 8px solid transparent;
+                      border-right: 8px solid transparent;
+                      border-top: 8px solid #2563eb;
+                    "></div>
                   </div>
                 `,
                 iconSize: [48, 56],
