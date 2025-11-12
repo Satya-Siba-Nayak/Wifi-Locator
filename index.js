@@ -620,22 +620,41 @@ document.addEventListener("DOMContentLoaded", async () => {
               ? `${Math.round(hotspot.distance * 1000)}m`
               : `${hotspot.distance.toFixed(1)}km`;
 
+          const photoUrl = hotspot.first_photo_path
+            ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+            : null;
+
           return `
-          <div class="nearby-hotspot bg-zinc-800 hover:bg-zinc-700 rounded-lg p-3 cursor-pointer transition-colors" data-lat="${hotspot.latitude}" data-lng="${hotspot.longitude}">
-            <div class="flex items-start justify-between">
-              <div class="flex-1 min-w-0">
-                <h4 class="text-white font-medium text-sm truncate">${hotspot.name}</h4>
-                ${hotspot.address_text ? `<p class="text-zinc-400 text-xs mt-1 line-clamp-1">${hotspot.address_text}</p>` : ""}
+          <div class="nearby-hotspot bg-zinc-800 hover:bg-zinc-700 rounded-lg overflow-hidden cursor-pointer transition-colors" data-lat="${hotspot.latitude}" data-lng="${hotspot.longitude}">
+            <div class="flex">
+              ${
+                photoUrl
+                  ? `
+                <div class="w-20 h-20 flex-shrink-0">
+                  <img src="${photoUrl}" alt="${hotspot.name}" class="w-full h-full object-cover" onerror="this.parentElement.style.display='none'"/>
+                </div>
+              `
+                  : `
+                <div class="w-20 h-20 flex-shrink-0 bg-zinc-900 flex items-center justify-center">
+                  <svg class="w-8 h-8 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
+                  </svg>
+                </div>
+              `
+              }
+              <div class="flex-1 p-3 min-w-0">
+                <div class="flex items-start justify-between mb-1">
+                  <h4 class="text-white font-medium text-sm truncate pr-2">${hotspot.name}</h4>
+                  <span class="text-blue-400 text-xs font-semibold flex-shrink-0">${distanceText}</span>
+                </div>
+                ${hotspot.address_text ? `<p class="text-zinc-400 text-xs line-clamp-1 mb-2">${hotspot.address_text}</p>` : ""}
+                <div class="flex items-center gap-2">
+                  <svg class="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
+                  </svg>
+                  <span class="text-zinc-500 text-xs">WiFi Available</span>
+                </div>
               </div>
-              <div class="ml-3 flex-shrink-0">
-                <span class="text-blue-400 text-xs font-semibold">${distanceText}</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-2 mt-2">
-              <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
-              </svg>
-              <span class="text-zinc-500 text-xs">WiFi Available</span>
             </div>
           </div>
         `;
