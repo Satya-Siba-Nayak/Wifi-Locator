@@ -390,9 +390,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     // zoom 10-12: small (0.6-0.75)
     // zoom 13-15: medium (0.8-1.0)
     // zoom 16-18: large (1.05-1.2)
-    if (zoom <= 10) return 0.6;
-    if (zoom >= 18) return 1.2;
-    return 0.6 + ((zoom - 10) / 8) * 0.6;
+    let scale;
+    if (zoom <= 10) scale = 0.6;
+    else if (zoom >= 18) scale = 1.2;
+    else scale = 0.6 + ((zoom - 10) / 8) * 0.6;
+
+    console.log(`🔍 Zoom Level: ${zoom} → Scale: ${scale.toFixed(2)}`);
+    return scale;
   };
 
   // Create marker icon with scale
