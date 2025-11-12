@@ -169,19 +169,23 @@ body {
     }
 }
 
-/* Apply zoom-based scaling to popup content wrapper only */
+/* Apply zoom-based scaling to entire popup using zoom property */
 .custom-popup-leaflet .leaflet-popup-content-wrapper {
-    transform-origin: bottom center;
-    transition: transform 0.2s ease-out;
+    transition: all 0.2s ease-out;
 }
 
 .custom-popup-leaflet .leaflet-popup-tip {
-    transform-origin: top center;
-    transition: transform 0.2s ease-out;
+    transition: all 0.2s ease-out;
 }
 
 .custom-popup-leaflet .leaflet-popup-close-button {
     transition: all 0.2s ease-out;
+}
+
+/* Scale entire popup container to avoid positioning issues */
+.custom-popup-leaflet {
+    transform-origin: bottom center !important;
+    transition: transform 0.2s ease-out !important;
 }
 
 /* Popup Content Styling */

@@ -359,26 +359,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           popup.options.maxWidth = scaledMaxWidth;
           popup.options.minWidth = Math.floor(280 * scale);
 
-          // If popup is open, update its transform scale
+          // If popup is open, update its zoom scale
           if (popup.isOpen()) {
-            popup.update();
             const popupElement = popup.getElement();
             if (popupElement) {
-              const wrapper = popupElement.querySelector(
-                ".leaflet-popup-content-wrapper",
-              );
-              const tip = popupElement.querySelector(".leaflet-popup-tip");
-              const closeButton = popupElement.querySelector(
-                ".leaflet-popup-close-button",
-              );
-
-              if (wrapper) wrapper.style.transform = `scale(${scale})`;
-              if (tip) tip.style.transform = `scale(${scale})`;
-              if (closeButton) {
-                closeButton.style.transform = `scale(${scale})`;
-                closeButton.style.transformOrigin = "top right";
-              }
+              // Use CSS zoom property to scale everything together
+              popupElement.style.zoom = scale;
             }
+            popup.update();
           }
         }
       });
@@ -524,20 +512,8 @@ document.addEventListener("DOMContentLoaded", async () => {
               const scale = getZoomScale();
               const popupElement = e.popup.getElement();
               if (popupElement) {
-                const wrapper = popupElement.querySelector(
-                  ".leaflet-popup-content-wrapper",
-                );
-                const tip = popupElement.querySelector(".leaflet-popup-tip");
-                const closeButton = popupElement.querySelector(
-                  ".leaflet-popup-close-button",
-                );
-
-                if (wrapper) wrapper.style.transform = `scale(${scale})`;
-                if (tip) tip.style.transform = `scale(${scale})`;
-                if (closeButton) {
-                  closeButton.style.transform = `scale(${scale})`;
-                  closeButton.style.transformOrigin = "top right";
-                }
+                // Use CSS zoom property to scale everything together
+                popupElement.style.zoom = scale;
               }
             });
           }
