@@ -267,6 +267,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <h3 class="text-sm font-semibold text-zinc-400 px-1 mb-3">Quick Filters</h3>
                     <div class="flex flex-wrap gap-2">${filtersHTML}</div>
                 </div>
+                <div id="nearby-hotspots-section">
+                    <h3 class="text-sm font-semibold text-zinc-400 px-1 mb-3">Nearby Hotspots</h3>
+                    <div id="nearby-hotspots-list" class="space-y-3">
+                        <p class="text-zinc-500 text-sm px-1">Detecting your location...</p>
+                    </div>
+                </div>
                 <div>
                     <h3 class="text-sm font-semibold text-zinc-400 px-1 mb-3">Featured Places</h3>
                     <div class="space-y-3">${featuredHTML}</div>
@@ -539,9 +545,129 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
           }
         });
+
+        // Update nearby hotspots list after markers are loaded
+        updateNearbyHotspots();
       }
     } catch (error) {
       console.error("Error loading hotspots:", error);
+    }
+  };
+
+  // Calculate distance between two points using Haversine formula
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  // Update nearby hotspots list
+  const updateNearbyHotspots = async () => {
+    const nearbyList = document.getElementById("nearby-hotspots-list");
+
+    if (!currentUserLocation) {
+      nearbyList.innerHTML = `
+        <p class="text-zinc-500 text-sm px-1">Enable location to see nearby hotspots</p>
+      `;
+      return;
+    }
+
+    try {
+      const result = await window.dbService.getLiveHotspots();
+
+      if (!result.success || !result.data || result.data.length === 0) {
+        nearbyList.innerHTML = `
+          <p class="text-zinc-500 text-sm px-1">No hotspots found nearby</p>
+        `;
+        return;
+      }
+
+      // Calculate distances and sort
+      const hotspotsWithDistance = result.data
+        .filter((h) => h.latitude && h.longitude)
+        .map((hotspot) => ({
+          ...hotspot,
+          distance: calculateDistance(
+            currentUserLocation.lat,
+            currentUserLocation.lng,
+            hotspot.latitude,
+            hotspot.longitude,
+          ),
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 5); // Show top 5 nearest
+
+      if (hotspotsWithDistance.length === 0) {
+        nearbyList.innerHTML = `
+          <p class="text-zinc-500 text-sm px-1">No hotspots found nearby</p>
+        `;
+        return;
+      }
+
+      // Generate HTML for nearby hotspots
+      const nearbyHTML = hotspotsWithDistance
+        .map((hotspot) => {
+          const distanceText =
+            hotspot.distance < 1
+              ? `${Math.round(hotspot.distance * 1000)}m`
+              : `${hotspot.distance.toFixed(1)}km`;
+
+          return `
+          <div class="nearby-hotspot bg-zinc-800 hover:bg-zinc-700 rounded-lg p-3 cursor-pointer transition-colors" data-lat="${hotspot.latitude}" data-lng="${hotspot.longitude}">
+            <div class="flex items-start justify-between">
+              <div class="flex-1 min-w-0">
+                <h4 class="text-white font-medium text-sm truncate">${hotspot.name}</h4>
+                ${hotspot.address_text ? `<p class="text-zinc-400 text-xs mt-1 line-clamp-1">${hotspot.address_text}</p>` : ""}
+              </div>
+              <div class="ml-3 flex-shrink-0">
+                <span class="text-blue-400 text-xs font-semibold">${distanceText}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+              <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
+              </svg>
+              <span class="text-zinc-500 text-xs">WiFi Available</span>
+            </div>
+          </div>
+        `;
+        })
+        .join("");
+
+      nearbyList.innerHTML = nearbyHTML;
+
+      // Add click handlers
+      document.querySelectorAll(".nearby-hotspot").forEach((el) => {
+        el.addEventListener("click", () => {
+          const lat = parseFloat(el.dataset.lat);
+          const lng = parseFloat(el.dataset.lng);
+          map.setView([lat, lng], 17); // Zoom to hotspot
+
+          // Find and open the marker popup
+          window.hotspotsMarkers.forEach((marker) => {
+            if (
+              marker.hotspotData &&
+              marker.hotspotData.latitude === lat &&
+              marker.hotspotData.longitude === lng
+            ) {
+              marker.openPopup();
+            }
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Error loading nearby hotspots:", error);
+      nearbyList.innerHTML = `
+        <p class="text-red-400 text-sm px-1">Error loading hotspots</p>
+      `;
     }
   };
 
@@ -757,21 +883,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("Accuracy:", position.coords.accuracy, "meters");
 
         currentUserLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
         };
 
-        // Show coordinates in sidebar temporarily for debugging
-        sidebarContent.innerHTML = `
-          <div class="space-y-4 p-4">
-            <div class="bg-zinc-800 p-4 rounded-lg">
-              <h3 class="font-semibold text-zinc-100 mb-2">📍 Your Location</h3>
-              <p class="text-sm text-zinc-300">Lat: ${position.coords.latitude.toFixed(6)}</p>
-              <p class="text-sm text-zinc-300">Lon: ${position.coords.longitude.toFixed(6)}</p>
-              <p class="text-sm text-zinc-400 mt-2">Accuracy: ±${Math.round(position.coords.accuracy)}m</p>
-            </div>
-          </div>
-        `;
+        // Update nearby hotspots when location is detected
+        updateNearbyHotspots();
 
         updateMap(currentUserLocation);
 
