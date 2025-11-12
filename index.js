@@ -369,7 +369,8 @@ document.addEventListener("DOMContentLoaded", async () => {
               );
               if (scaleWrapper) {
                 scaleWrapper.style.transform = `scale(${scale})`;
-                scaleWrapper.style.transformOrigin = "bottom center";
+                // Scale from top center - popup anchored at bottom tip
+                scaleWrapper.style.transformOrigin = "center top";
               }
             }
             popup.update();
@@ -524,7 +525,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 );
                 if (scaleWrapper) {
                   scaleWrapper.style.transform = `scale(${scale})`;
-                  scaleWrapper.style.transformOrigin = "bottom center";
+                  // Scale from top center - popup anchored at bottom tip
+                  scaleWrapper.style.transformOrigin = "center top";
                 }
               }
             });

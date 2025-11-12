@@ -191,8 +191,9 @@ body {
 /* Popup Scale Wrapper - scales content without affecting positioning */
 .popup-scale-wrapper {
     display: inline-block;
-    transform-origin: bottom center;
+    transform-origin: center top;
     transition: transform 0.2s ease-out;
+    position: relative;
 }
 
 /* Popup Content Styling */
