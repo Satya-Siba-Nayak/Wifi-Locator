@@ -26,23 +26,9 @@ class SupabaseDBService {
   async getLiveHotspots() {
     try {
       // Fetch ALL hotspots with creator profile info and photos in one query
-      const { data: hotspotData, error: hotspotError } = await this.supabase
-        .from("hotspots")
-        .select(
-          `
-          *,
-          profiles!hotspots_created_by_fkey (
-            username,
-            id
-          ),
-          hotspot_photos (
-            id,
-            storage_path,
-            display_order
-          )
-        `,
-        )
-        .order("created_at", { ascending: false });
+      // Use PostGIS ST_X and ST_Y to extract coordinates from geography type
+      const { data: hotspotData, error: hotspotError } =
+        await this.supabase.rpc("get_all_hotspots_with_coords");
 
       if (hotspotError) {
         console.error("❌ Error fetching hotspots:", hotspotError);
@@ -51,41 +37,51 @@ class SupabaseDBService {
 
       console.log("📦 Fetched hotspots from database:", hotspotData);
 
-      // Process and format hotspot data
-      const hotspots = hotspotData.map((spot) => {
-        const profile = spot.profiles;
-        const photos = spot.hotspot_photos || [];
+      // Group rows by hotspot ID (since LEFT JOIN with photos creates multiple rows)
+      const hotspotsMap = new Map();
 
-        const latitude = this.extractLatitude(spot.location);
-        const longitude = this.extractLongitude(spot.location);
+      hotspotData.forEach((row) => {
+        if (!hotspotsMap.has(row.id)) {
+          hotspotsMap.set(row.id, {
+            id: row.id,
+            name: row.name,
+            address_text: row.address_text,
+            created_by: row.created_by,
+            created_at: row.created_at,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            created_by_username: row.username || null,
+            created_by_id: row.created_by,
+            photos: [],
+            first_photo_path: null,
+          });
+        }
+
+        // Add photo if it exists in this row
+        if (row.photo_id) {
+          const hotspot = hotspotsMap.get(row.id);
+          hotspot.photos.push({
+            id: row.photo_id,
+            storage_path: row.storage_path,
+            display_order: row.display_order,
+          });
+        }
+      });
+
+      // Convert map to array and set first photo
+      const hotspots = Array.from(hotspotsMap.values()).map((spot) => {
+        // Sort photos by display_order and get first photo
+        spot.photos.sort((a, b) => a.display_order - b.display_order);
+        spot.first_photo_path = spot.photos[0]?.storage_path || null;
 
         console.log(`🔍 Debug hotspot ${spot.id}:`, {
-          profile,
-          username: profile?.username,
-          photos,
-          photoCount: photos.length,
-          created_by: spot.created_by,
-          location_raw: spot.location,
-          location_type: typeof spot.location,
-          latitude: latitude,
-          longitude: longitude,
+          username: spot.created_by_username,
+          photoCount: spot.photos.length,
+          latitude: spot.latitude,
+          longitude: spot.longitude,
         });
 
-        // Sort photos by display_order and get first photo
-        const sortedPhotos = photos.sort(
-          (a, b) => a.display_order - b.display_order,
-        );
-        const firstPhoto = sortedPhotos[0];
-
-        return {
-          ...spot,
-          latitude: latitude,
-          longitude: longitude,
-          created_by_username: profile?.username || null,
-          created_by_id: spot.created_by,
-          photos: sortedPhotos,
-          first_photo_path: firstPhoto?.storage_path || null,
-        };
+        return spot;
       });
 
       console.log("✅ Processed hotspots:", hotspots);
