@@ -343,13 +343,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Load and display hotspots from database
   const loadHotspots = async () => {
+    console.log("🔍 Starting to load hotspots...");
     try {
       const result = await window.dbService.getLiveHotspots();
+      console.log("📡 Database result:", result);
 
       if (result.success && result.data) {
-        console.log(`Loaded ${result.data.length} hotspots from database`);
+        console.log(`✅ Loaded ${result.data.length} hotspots from database`);
+        console.log("📊 Hotspot data:", result.data);
 
-        result.data.forEach((hotspot) => {
+        if (result.data.length === 0) {
+          console.warn("⚠️ No hotspots in database! Add one first.");
+          return;
+        }
+
+        result.data.forEach((hotspot, index) => {
+          console.log(`🔨 Creating marker ${index + 1}:`, hotspot);
           if (hotspot.latitude && hotspot.longitude) {
             // Create custom marker for hotspot with improved design
             const marker = L.marker([hotspot.latitude, hotspot.longitude], {
@@ -391,6 +400,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 iconAnchor: [24, 56],
               }),
             }).addTo(map);
+
+            console.log(
+              `✅ Marker ${index + 1} added to map at [${hotspot.latitude}, ${hotspot.longitude}]`,
+            );
 
             // Get creator info (username only, no email)
             const creatorName = hotspot.created_by_username || "Anonymous";
