@@ -133,6 +133,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Coffee shops nearby",
   ];
 
+  const MOCK_PLACES = [
+    {
+      maps: {
+        title: "The Daily Grind",
+        uri: "https://www.openstreetmap.org/",
+        placeAnswerSources: {
+          reviewSnippets: [
+            {
+              text: "Great coffee and reliable Wi-Fi for working.",
+              author: "Jane D.",
+            },
+            {
+              text: "Can get a bit crowded, but the atmosphere is nice.",
+              author: "John S.",
+            },
+          ],
+        },
+      },
+    },
+    {
+      maps: {
+        title: "City Central Library",
+        uri: "https://www.openstreetmap.org/",
+        placeAnswerSources: {
+          reviewSnippets: [
+            {
+              text: "Very quiet and the internet is super fast and free.",
+              author: "Alice W.",
+            },
+          ],
+        },
+      },
+    },
+    {
+      maps: {
+        title: "Co-Work & Create",
+        uri: "https://www.openstreetmap.org/",
+        placeAnswerSources: {
+          reviewSnippets: [],
+        },
+      },
+    },
+  ];
+
   // --- RENDERING ---
   const renderSpinner = () => `
         <div class="flex flex-col items-center justify-center h-full space-y-2">
