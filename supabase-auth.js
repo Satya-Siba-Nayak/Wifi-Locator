@@ -129,10 +129,14 @@ class SupabaseAuthService {
 
       console.log("🔄 Requesting password reset for:", email);
 
+      // Use the same origin as current page (handles localhost:8000, localhost:8080, etc.)
+      const redirectUrl = `${window.location.protocol}//${window.location.host}/reset-password.html`;
+      console.log("🔗 Reset redirect URL:", redirectUrl);
+
       const { data, error } = await this.supabase.auth.resetPasswordForEmail(
         email,
         {
-          redirectTo: `${window.location.origin}/reset-password.html`,
+          redirectTo: redirectUrl,
         },
       );
 
