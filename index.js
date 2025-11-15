@@ -102,29 +102,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Free Wi-Fi",
     "Quiet Places",
   ];
-  const featuredPlaces = [
-    {
-      name: "Artisan Roast Cafe",
-      query: "Artisan Roast Cafe with wifi",
-      category: "Coffee Shop",
-      image:
-        "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=500&auto=format&fit=crop",
-    },
-    {
-      name: "Central City Library",
-      query: "Central City Library with free wifi",
-      category: "Library",
-      image:
-        "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=500&auto=format&fit=crop",
-    },
-    {
-      name: "Innovate Coworking Hub",
-      query: "Innovate Coworking Hub with power outlets",
-      category: "Coworking Space",
-      image:
-        "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop",
-    },
-  ];
+  let featuredPlaces = []; // Will be loaded from database
   const recommendationPills = [
     "Quiet cafes with fast Wi-Fi",
     "Places to work with power outlets",
@@ -133,49 +111,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Coffee shops nearby",
   ];
 
-  const MOCK_PLACES = [
-    {
-      maps: {
-        title: "The Daily Grind",
-        uri: "https://www.openstreetmap.org/",
-        placeAnswerSources: {
-          reviewSnippets: [
-            {
-              text: "Great coffee and reliable Wi-Fi for working.",
-              author: "Jane D.",
-            },
-            {
-              text: "Can get a bit crowded, but the atmosphere is nice.",
-              author: "John S.",
-            },
-          ],
-        },
-      },
-    },
-    {
-      maps: {
-        title: "City Central Library",
-        uri: "https://www.openstreetmap.org/",
-        placeAnswerSources: {
-          reviewSnippets: [
-            {
-              text: "Very quiet and the internet is super fast and free.",
-              author: "Alice W.",
-            },
-          ],
-        },
-      },
-    },
-    {
-      maps: {
-        title: "Co-Work & Create",
-        uri: "https://www.openstreetmap.org/",
-        placeAnswerSources: {
-          reviewSnippets: [],
-        },
-      },
-    },
-  ];
+  // MOCK_PLACES removed - now using real database data
 
   // --- RENDERING ---
   const renderSpinner = () => `
@@ -189,31 +125,49 @@ document.addEventListener("DOMContentLoaded", async () => {
   const renderApiError = (message) =>
     `<div class="text-yellow-400 bg-yellow-900/30 p-3 rounded-lg">${message}</div>`;
 
-  const renderLocationCard = (place) => `
-        <div class="bg-zinc-800 p-4 rounded-xl border border-zinc-700/80 hover:border-zinc-600 hover:bg-zinc-700/50 transition-all group">
-            <div class="flex justify-between items-start">
-                <div class="flex items-start space-x-3">
-                    <div class="flex-shrink-0 pt-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                    </div>
-                    <div><h3 class="font-semibold text-gray-100">${place.title}</h3></div>
-                </div>
-                <a href="${place.uri}" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-full text-zinc-400 group-hover:text-blue-400 group-hover:bg-zinc-600/50 transition-colors" aria-label="Open in Maps">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002 2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                </a>
+  const renderLocationCard = (hotspot) => {
+    const photoUrl = hotspot.first_photo_path
+      ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+      : null;
+    const creatorName = hotspot.created_by_username || "Anonymous";
+    const mapsUrl = `https://www.openstreetmap.org/?mlat=${hotspot.latitude}&mlon=${hotspot.longitude}#map=18/${hotspot.latitude}/${hotspot.longitude}`;
+
+    return `
+        <div class="bg-zinc-800 rounded-xl border border-zinc-700/80 hover:border-zinc-600 hover:bg-zinc-700/50 transition-all group cursor-pointer" data-hotspot-id="${hotspot.id}" data-lat="${hotspot.latitude}" data-lng="${hotspot.longitude}">
+            ${
+              photoUrl
+                ? `
+            <div class="relative h-32 overflow-hidden rounded-t-xl">
+                <img src="${photoUrl}" alt="${hotspot.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             </div>
-            ${(place.placeAnswerSources?.reviewSnippets || [])
-              .slice(0, 2)
-              .map(
-                (snippet) => `
-                <div class="mt-3 pl-8 border-l-2 border-zinc-600 pl-3">
-                    <p class="text-sm text-zinc-300 italic">"${snippet.text}"</p>
-                    <p class="text-xs text-zinc-400 text-right mt-1">- ${snippet.author}</p>
+            `
+                : ""
+            }
+            <div class="p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-start space-x-3 flex-1">
+                        <div class="flex-shrink-0 pt-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-gray-100">${hotspot.name}</h3>
+                            ${hotspot.address_text ? `<p class="text-sm text-zinc-400 mt-1 line-clamp-2">${hotspot.address_text}</p>` : ""}
+                        </div>
+                    </div>
+                    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-full text-zinc-400 group-hover:text-blue-400 group-hover:bg-zinc-600/50 transition-colors flex-shrink-0" aria-label="Open in Maps" onclick="event.stopPropagation()">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002 2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </a>
                 </div>
-            `,
-              )
-              .join("")}
+                <div class="mt-3 pt-3 border-t border-zinc-700/50 flex items-center justify-between text-xs text-zinc-500">
+                    <span>Added by ${creatorName}</span>
+                    ${hotspot.created_at ? `<span>${formatDate(hotspot.created_at)}</span>` : ""}
+                </div>
+            </div>
         </div>`;
+  };
 
   const renderResults = (result) => {
     isShowingResults = true;
@@ -221,17 +175,42 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     let html = '<div class="space-y-4">';
     if (result.summary) {
-      html += `<div class="bg-zinc-800 p-4 rounded-xl"><p class="text-zinc-300">${result.summary}</p></div>`;
+      html += `<div class="bg-zinc-800 p-4 rounded-xl border border-zinc-700/50"><p class="text-zinc-300">${result.summary}</p></div>`;
     }
-    if (result.places.length > 0) {
-      html += result.places
-        .map((place) => renderLocationCard(place.maps))
+    if (result.hotspots && result.hotspots.length > 0) {
+      html += result.hotspots
+        .map((hotspot) => renderLocationCard(hotspot))
         .join("");
     } else {
-      html += `<div class="text-center text-zinc-400 p-4"><p>No specific places found. Try a different search.</p></div>`;
+      html += `<div class="text-center text-zinc-400 p-4"><p>No hotspots found matching "${result.query}". Try a different search or add a new location!</p></div>`;
     }
     html += "</div>";
     sidebarContent.innerHTML = html;
+
+    // Add click handlers to location cards to pan to them on map
+    document.querySelectorAll("[data-hotspot-id]").forEach((card) => {
+      card.addEventListener("click", () => {
+        const lat = parseFloat(card.dataset.lat);
+        const lng = parseFloat(card.dataset.lng);
+        map.setView([lat, lng], 17);
+
+        // Find and open the marker popup
+        window.hotspotsMarkers.forEach((marker) => {
+          if (
+            marker.hotspotData &&
+            marker.hotspotData.latitude === lat &&
+            marker.hotspotData.longitude === lng
+          ) {
+            marker.openPopup();
+          }
+        });
+
+        // Close sidebar on mobile
+        if (window.innerWidth < 768) {
+          toggleSidebar(false);
+        }
+      });
+    });
   };
 
   const renderInitialView = () => {
@@ -246,18 +225,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
 
     const featuredHTML = featuredPlaces
-      .map(
-        (place) => `
-            <button data-query="${place.query}" class="featured-place w-full text-left rounded-lg overflow-hidden bg-zinc-800 hover:bg-zinc-700/70 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 group">
+      .map((hotspot) => {
+        const photoUrl = hotspot.first_photo_path
+          ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+          : "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop"; // Default image
+
+        return `
+            <button data-lat="${hotspot.latitude}" data-lng="${hotspot.longitude}" class="featured-place w-full text-left rounded-lg overflow-hidden bg-zinc-800 hover:bg-zinc-700/70 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 group">
                 <div class="relative h-24">
-                    <img src="${place.image}" alt="${place.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src="${photoUrl}" alt="${hotspot.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop'" />
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <span class="absolute bottom-2 right-2 bg-blue-600/90 text-white text-xs font-semibold px-2 py-0.5 rounded-full">${place.category}</span>
+                    <span class="absolute top-2 right-2 bg-blue-600/90 text-white text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
+                        </svg>
+                        Wi-Fi
+                    </span>
                 </div>
-                <div class="p-3"><p class="font-semibold text-zinc-100">${place.name}</p></div>
+                <div class="p-3">
+                    <p class="font-semibold text-zinc-100">${hotspot.name}</p>
+                    ${hotspot.address_text ? `<p class="text-xs text-zinc-400 mt-1 line-clamp-1">${hotspot.address_text}</p>` : ""}
+                </div>
             </button>
-        `,
-      )
+        `;
+      })
       .join("");
 
     sidebarContent.innerHTML = `
@@ -274,14 +265,41 @@ document.addEventListener("DOMContentLoaded", async () => {
                 </div>
                 <div>
                     <h3 class="text-sm font-semibold text-zinc-400 px-1 mb-3">Featured Places</h3>
-                    <div class="space-y-3">${featuredHTML}</div>
+                    <div id="featured-places-list" class="space-y-3">
+                        ${featuredHTML || '<p class="text-zinc-500 text-sm px-1">Loading featured places...</p>'}
+                    </div>
                 </div>
             </div>`;
 
-    document.querySelectorAll(".filter-pill, .featured-place").forEach((el) => {
+    document.querySelectorAll(".filter-pill").forEach((el) => {
       el.addEventListener("click", (e) =>
         executeSearch(e.currentTarget.dataset.query),
       );
+    });
+
+    // Add click handlers for featured places to pan to location on map
+    document.querySelectorAll(".featured-place").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        const lat = parseFloat(e.currentTarget.dataset.lat);
+        const lng = parseFloat(e.currentTarget.dataset.lng);
+        map.setView([lat, lng], 17);
+
+        // Find and open the marker popup
+        window.hotspotsMarkers.forEach((marker) => {
+          if (
+            marker.hotspotData &&
+            marker.hotspotData.latitude === lat &&
+            marker.hotspotData.longitude === lng
+          ) {
+            marker.openPopup();
+          }
+        });
+
+        // Close sidebar on mobile
+        if (window.innerWidth < 768) {
+          toggleSidebar(false);
+        }
+      });
     });
   };
 
@@ -457,6 +475,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Store all markers globally for zoom updates
   window.hotspotsMarkers = [];
+
+  // Load featured places (top 3 most recent hotspots)
+  const loadFeaturedPlaces = async () => {
+    try {
+      const result = await window.dbService.getLiveHotspots();
+
+      if (result.success && result.data && result.data.length > 0) {
+        // Get top 3 most recent hotspots
+        featuredPlaces = result.data
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 3);
+
+        console.log("✅ Loaded featured places:", featuredPlaces);
+      } else {
+        console.warn("⚠️ No hotspots available for featured places");
+        featuredPlaces = [];
+      }
+    } catch (error) {
+      console.error("Error loading featured places:", error);
+      featuredPlaces = [];
+    }
+  };
 
   // Load and display hotspots from database
   const loadHotspots = async () => {
@@ -825,25 +865,82 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
-  const handleSearch = (query) => {
-    if (!currentUserLocation) {
-      sidebarContent.innerHTML = renderError(
-        "Could not get your location. Please enable location services and try again.",
-      );
-      return;
-    }
+  const handleSearch = async (query) => {
+    console.log(`🔍 Searching for: "${query}"`);
     isLoading = true;
     sidebarContent.innerHTML = renderSpinner();
 
-    // Simulate a network request with a timeout
-    setTimeout(() => {
-      const mockResult = {
-        summary: `Showing results for "${query}". This is mock data for demonstration.`,
-        places: MOCK_PLACES,
+    try {
+      // Get all hotspots from database
+      console.log("📡 Fetching hotspots from database...");
+      const result = await window.dbService.getLiveHotspots();
+
+      if (!result.success || !result.data) {
+        console.error("❌ Failed to load hotspots:", result.error);
+        sidebarContent.innerHTML = renderError(
+          "Failed to load hotspots. Please try again.",
+        );
+        isLoading = false;
+        return;
+      }
+
+      console.log(
+        `✅ Retrieved ${result.data.length} total hotspots from database`,
+      );
+
+      // Filter hotspots based on search query (case-insensitive)
+      const queryLower = query.toLowerCase().trim();
+      let filteredHotspots = result.data;
+
+      if (queryLower) {
+        filteredHotspots = result.data.filter((hotspot) => {
+          const nameMatch = hotspot.name?.toLowerCase().includes(queryLower);
+          const addressMatch = hotspot.address_text
+            ?.toLowerCase()
+            .includes(queryLower);
+          const creatorMatch = hotspot.created_by_username
+            ?.toLowerCase()
+            .includes(queryLower);
+          return nameMatch || addressMatch || creatorMatch;
+        });
+        console.log(
+          `🔎 Filtered to ${filteredHotspots.length} hotspots matching "${query}"`,
+        );
+      }
+
+      // Sort by distance if user location is available
+      if (currentUserLocation && filteredHotspots.length > 0) {
+        filteredHotspots = filteredHotspots
+          .map((hotspot) => ({
+            ...hotspot,
+            distance: calculateDistance(
+              currentUserLocation.lat,
+              currentUserLocation.lng,
+              hotspot.latitude,
+              hotspot.longitude,
+            ),
+          }))
+          .sort((a, b) => a.distance - b.distance);
+      }
+
+      const searchResult = {
+        query: query,
+        summary:
+          filteredHotspots.length > 0
+            ? `Found ${filteredHotspots.length} hotspot${filteredHotspots.length !== 1 ? "s" : ""} matching "${query}"${currentUserLocation ? ", sorted by distance" : ""}`
+            : null,
+        hotspots: filteredHotspots,
       };
-      renderResults(mockResult);
+
+      renderResults(searchResult);
       isLoading = false;
-    }, 1000);
+    } catch (error) {
+      console.error("Search error:", error);
+      sidebarContent.innerHTML = renderError(
+        "An error occurred while searching. Please try again.",
+      );
+      isLoading = false;
+    }
   };
 
   const executeSearch = (query) => {
@@ -873,11 +970,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     </div>
   `;
 
+  // Load featured places first
+  loadFeaturedPlaces().then(() => {
+    console.log("📍 Featured places loaded, now requesting geolocation...");
+  });
+
   // Geolocation
   if (navigator.geolocation) {
     console.log("📍 Requesting geolocation...");
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         console.log("✅ Geolocation success:", {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -894,10 +996,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         updateMap(currentUserLocation);
 
+        // Wait for featured places to load before rendering
+        await loadFeaturedPlaces();
+
         // Render initial view after a delay so user can see coordinates
         setTimeout(() => renderInitialView(), 3000);
       },
-      (error) => {
+      async (error) => {
         console.error("Geolocation error:", error);
         let errorMessage = "";
         switch (error.code) {
@@ -918,6 +1023,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         sidebarContent.innerHTML = renderError(errorMessage);
         // Use a default location for the map (Pune, India)
         updateMap({ latitude: 18.5204, longitude: 73.8567 });
+
+        // Wait for featured places to load before rendering
+        await loadFeaturedPlaces();
         renderInitialView();
       },
       {
@@ -932,7 +1040,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       "Geolocation is not supported by this browser.",
     );
     updateMap({ latitude: 18.5204, longitude: 73.8567 });
-    renderInitialView();
+
+    // Wait for featured places to load before rendering
+    loadFeaturedPlaces().then(() => renderInitialView());
   }
 
   // Sidebar and Overlay toggles
@@ -982,6 +1092,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Profile form segmented control
+  const forgotPasswordLink = document.getElementById("forgot-password-link");
+
   loginTab.addEventListener("click", () => {
     currentAuthMode = "login";
     segmentedControlBg.style.transform = "translateX(0%)";
@@ -992,6 +1104,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     nameField.classList.add("hidden");
     nameField.querySelector("input").required = false;
     authSubmitBtn.textContent = "Sign In";
+
+    // Show forgot password link in login mode
+    if (forgotPasswordLink) {
+      forgotPasswordLink.classList.remove("hidden");
+    }
+
     // Clear error messages
     if (authErrorMsg) authErrorMsg.classList.add("hidden");
     if (authSuccessMsg) authSuccessMsg.classList.add("hidden");
@@ -1009,6 +1127,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     nameField.classList.remove("hidden");
     nameField.querySelector("input").required = true;
     authSubmitBtn.textContent = "Create Account";
+
+    // Hide forgot password link in signup mode
+    if (forgotPasswordLink) {
+      forgotPasswordLink.classList.add("hidden");
+    }
+
     // Clear error messages
     if (authErrorMsg) authErrorMsg.classList.add("hidden");
     if (authSuccessMsg) authSuccessMsg.classList.add("hidden");
@@ -1136,6 +1260,94 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Re-enable button
         signoutBtn.disabled = false;
         signoutBtn.textContent = originalText;
+      }
+    });
+  }
+
+  // Forgot Password functionality
+  const passwordResetModal = document.getElementById("password-reset-modal");
+  const passwordResetForm = document.getElementById("password-reset-form");
+  const cancelResetBtn = document.getElementById("cancel-reset-button");
+  const resetEmailInput = document.getElementById("reset-email");
+
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener("click", () => {
+      // Hide main auth form and show reset modal
+      const authForm = document.getElementById("auth-form");
+      authForm.classList.add("hidden");
+      passwordResetModal.classList.remove("hidden");
+
+      // Pre-fill with email if already entered
+      const emailInput = document.getElementById("email");
+      if (emailInput.value) {
+        resetEmailInput.value = emailInput.value;
+      }
+    });
+  }
+
+  if (cancelResetBtn) {
+    cancelResetBtn.addEventListener("click", () => {
+      // Hide reset modal and show main auth form
+      passwordResetModal.classList.add("hidden");
+      const authForm = document.getElementById("auth-form");
+      authForm.classList.remove("hidden");
+
+      // Clear reset email input
+      resetEmailInput.value = "";
+
+      // Clear any error/success messages
+      if (authErrorMsg) authErrorMsg.classList.add("hidden");
+      if (authSuccessMsg) authSuccessMsg.classList.add("hidden");
+    });
+  }
+
+  if (passwordResetForm) {
+    passwordResetForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if (!window.authService) {
+        console.error("Auth service not initialized");
+        return;
+      }
+
+      const email = resetEmailInput.value.trim();
+
+      if (!email) {
+        window.authService.showError("Please enter your email address");
+        return;
+      }
+
+      // Disable submit button and show loading state
+      const sendResetBtn = document.getElementById("send-reset-button");
+      sendResetBtn.disabled = true;
+      const originalText = sendResetBtn.textContent;
+      sendResetBtn.textContent = "Sending...";
+
+      try {
+        const result = await window.authService.resetPassword(email);
+
+        if (result.success) {
+          window.authService.showSuccess(result.message);
+
+          // Reset form and hide modal after delay
+          setTimeout(() => {
+            passwordResetModal.classList.add("hidden");
+            const authForm = document.getElementById("auth-form");
+            authForm.classList.remove("hidden");
+            resetEmailInput.value = "";
+          }, 3000);
+        } else {
+          window.authService.showError(result.error);
+        }
+      } catch (error) {
+        console.error("Password reset error:", error);
+        window.authService.showError(
+          "Failed to send reset email. Please try again.",
+        );
+      } finally {
+        // Re-enable button
+        sendResetBtn.disabled = false;
+        sendResetBtn.textContent = originalText;
       }
     });
   }

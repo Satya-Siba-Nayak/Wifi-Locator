@@ -602,11 +602,20 @@
                             />
                         </div>
                         <div>
-                            <label
-                                for="password"
-                                class="block text-sm font-medium text-zinc-400 mb-1"
-                                >Password</label
-                            >
+                            <div class="flex justify-between items-center mb-1">
+                                <label
+                                    for="password"
+                                    class="block text-sm font-medium text-zinc-400"
+                                    >Password</label
+                                >
+                                <button
+                                    id="forgot-password-link"
+                                    type="button"
+                                    class="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
                             <input
                                 id="password"
                                 type="password"
@@ -623,6 +632,45 @@
                             Sign In
                         </button>
                     </form>
+
+                    <!-- Password Reset Modal (hidden by default) -->
+                    <div
+                        id="password-reset-modal"
+                        class="hidden mt-6 p-4 bg-zinc-800 border border-zinc-700 rounded-lg"
+                    >
+                        <h3 class="text-lg font-semibold text-zinc-100 mb-3">
+                            Reset Password
+                        </h3>
+                        <p class="text-sm text-zinc-400 mb-4">
+                            Enter your email address and we'll send you a link
+                            to reset your password.
+                        </p>
+                        <form id="password-reset-form" class="space-y-4">
+                            <input
+                                id="reset-email"
+                                type="email"
+                                required
+                                placeholder="student@mitwpu.edu.in"
+                                class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                            />
+                            <div class="flex gap-2">
+                                <button
+                                    id="cancel-reset-button"
+                                    type="button"
+                                    class="flex-1 bg-zinc-700 text-zinc-200 font-semibold py-2.5 rounded-lg hover:bg-zinc-600 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    id="send-reset-button"
+                                    type="submit"
+                                    class="flex-1 bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    Send Reset Link
+                                </button>
+                            </div>
+                        </form>
+                    </div>
 
                     <!-- Divider -->
                     <div class="relative flex items-center my-6">
