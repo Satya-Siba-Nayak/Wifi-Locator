@@ -2,81 +2,167 @@
 
 ## Featured Places Code
 
-### Definition (index.js, lines 105-119)
+### Featured Places State Variable (index.js, line ~105)
 ```javascript
-const featuredPlaces = [
-  {
-    name: "Artisan Roast Cafe",
-    query: "Artisan Roast Cafe with wifi",
-    category: "Coffee Shop",
-    image:
-      "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=500&auto=format&fit=crop",
-  },
-  {
-    name: "Central City Library",
-    query: "Central City Library with free wifi",
-    category: "Library",
-    image:
-      "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=500&auto=format&fit=crop",
-  },
-  {
-    name: "Innovate Coworking Hub",
-    query: "Innovate Coworking Hub with power outlets",
-    category: "Coworking Space",
-    image:
-      "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop",
-  },
-];
+let featuredPlaces = []; // Populated dynamically from database
 ```
 
-### Rendering Featured Places (index.js, lines 248-277)
+### Load Featured Places Function (index.js, lines 488-527)
 ```javascript
-const featuredHTML = featuredPlaces
-  .map(
-    (place) => `
-      <button data-query="${place.query}" class="featured-place w-full text-left rounded-lg overflow-hidden bg-zinc-800 hover:bg-zinc-700/70 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 group">
-        <div class="relative h-24">
-          <img src="${place.image}" alt="${place.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-          <span class="absolute bottom-2 right-2 bg-blue-600/90 text-white text-xs font-semibold px-2 py-0.5 rounded-full">${place.category}</span>
-        </div>
-        <div class="p-3"><p class="font-semibold text-zinc-100">${place.name}</p></div>
-      </button>
-    `,
-  )
-  .join("");
+// Load featured places (diverse selection based on location and recency)
+const loadFeaturedPlaces = async () => {
+  try {
+    const result = await window.dbService.getLiveHotspots();
+
+    if (result.success && result.data && result.data.length > 0) {
+      let candidates = [...result.data];
+
+      // If user location is available, prioritize nearby places
+      if (currentUserLocation) {
+        candidates = candidates.map((hotspot) => ({
+          ...hotspot,
+          distance: calculateDistance(
+            currentUserLocation.lat,
+            currentUserLocation.lng,
+            hotspot.latitude,
+            hotspot.longitude,
+          ),
+        }));
+
+        // Mix of nearby and recent places
+        const nearbyPlaces = [...candidates]
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, 2);
+        const recentPlaces = [...candidates]
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 2);
+
+        // Combine and remove duplicates
+        const combined = [...nearbyPlaces, ...recentPlaces];
+        const uniqueMap = new Map();
+        combined.forEach((place) => uniqueMap.set(place.id, place));
+        featuredPlaces = Array.from(uniqueMap.values()).slice(0, 3);
+      } else {
+        // No location: show most recent hotspots
+        featuredPlaces = candidates
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 3);
+      }
+
+      console.log("✅ Loaded featured places:", featuredPlaces);
+    } else {
+      console.warn("⚠️ No hotspots available for featured places");
+      featuredPlaces = [];
+    }
+  } catch (error) {
+    console.error("❌ Error loading featured places:", error);
+    featuredPlaces = [];
+  }
+};
+```
+
+### Rendering Featured Places (index.js, lines 235-265)
+```javascript
+// Generate featured HTML - check if array is populated
+let featuredHTML = "";
+if (featuredPlaces && featuredPlaces.length > 0) {
+  featuredHTML = featuredPlaces
+    .map((hotspot) => {
+      const photoUrl = hotspot.first_photo_path
+        ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+        : "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop";
+
+      return `
+        <button data-lat="${hotspot.latitude}" data-lng="${hotspot.longitude}" class="featured-place w-full text-left rounded-lg overflow-hidden bg-zinc-800 hover:bg-zinc-700/70 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 group">
+            <div class="relative h-24">
+                <img src="${photoUrl}" alt="${hotspot.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop'" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <span class="absolute top-2 right-2 bg-blue-600/90 text-white text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-15.355 21.213 0"/>
+                    </svg>
+                    Wi-Fi
+                </span>
+            </div>
+            <div class="p-3">
+                <p class="font-semibold text-zinc-100">${hotspot.name}</p>
+                ${hotspot.address_text ? `<p class="text-xs text-zinc-400 mt-1 line-clamp-1">${hotspot.address_text}</p>` : ""}
+            </div>
+        </button>
+      `;
+    })
+    .join("");
+}
 
 sidebarContent.innerHTML = `
   <div class="space-y-8">
     ...
     <div>
       <h3 class="text-sm font-semibold text-zinc-400 px-1 mb-3">Featured Places</h3>
-      <div class="space-y-3">${featuredHTML}</div>
+      <div id="featured-places-list" class="space-y-3">
+        ${featuredHTML || '<p class="text-zinc-500 text-sm px-1">Loading featured places...</p>'}
+      </div>
     </div>
   </div>`;
 
 // Add click handlers
 document.querySelectorAll(".featured-place").forEach((el) => {
-  el.addEventListener("click", (e) =>
-    executeSearch(e.currentTarget.dataset.query),
-  );
+  el.addEventListener("click", (e) => {
+    const lat = parseFloat(e.currentTarget.dataset.lat);
+    const lng = parseFloat(e.currentTarget.dataset.lng);
+    if (map && !isNaN(lat) && !isNaN(lng)) {
+      map.setView([lat, lng], 16);
+    }
+  });
 });
 ```
 
-### How to Add a New Featured Place
+### Initialization Sequence (index.js, lines 1014-1085)
 ```javascript
-// Step 1: Add to the featuredPlaces array
-const featuredPlaces = [
-  // ... existing places ...
-  {
-    name: "My Favorite Coffee Shop",
-    query: "My Favorite Coffee Shop with fast wifi",
-    category: "Coffee Shop",
-    image: "https://images.unsplash.com/photo-XXXX?q=80&w=500&auto=format&fit=crop",
-  },
-];
+// Load featured places first, then handle geolocation
+loadFeaturedPlaces().then(() => {
+  console.log("📍 Featured places loaded:", featuredPlaces.length, "places");
+  
+  // Render initial view immediately with featured places
+  renderInitialView();
 
-// That's it! The rendering is dynamic and will automatically include the new place.
+  // Geolocation
+  if (navigator.geolocation) {
+    console.log("📍 Requesting geolocation...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        currentUserLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        // Update nearby hotspots and map
+        updateNearbyHotspots();
+        updateMap(currentUserLocation);
+
+        // Re-load featured places with user location for better results
+        loadFeaturedPlaces().then(() => {
+          console.log("📍 Featured places reloaded with location:", featuredPlaces.length, "places");
+          // Re-render initial view with location-aware featured places
+          renderInitialView();
+        });
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        // Use default location
+        updateMap({ latitude: 18.5204, longitude: 73.8567 });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  } else {
+    console.error("Geolocation not supported");
+    updateMap({ latitude: 18.5204, longitude: 73.8567 });
+  }
+});
 ```
 
 ---

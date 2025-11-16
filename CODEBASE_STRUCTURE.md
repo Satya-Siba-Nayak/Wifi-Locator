@@ -34,48 +34,67 @@ C:\Users\ssnay\Documents\GitHub\Wifi-Locator\
 
 ## Core Components & Functionality
 
-### 1. **Featured Places** (Currently Implemented)
+### 1. **Featured Places** (Dynamic from Database)
 
-**Location:** `index.js` (lines 105-119, 248-277)
+**Location:** `index.js` (lines 488-527 for loading, 235-265 for rendering)
 
 **What it is:**
-Featured Places are a curated set of popular location types displayed in the sidebar's initial view. They serve as quick search shortcuts.
+Featured Places is a smart, dynamic selection of WiFi hotspots displayed in the sidebar's initial view. It shows a mix of nearby and recent hotspots based on user location.
 
 **Current Implementation:**
 ```javascript
-const featuredPlaces = [
-  {
-    name: "Artisan Roast Cafe",
-    query: "Artisan Roast Cafe with wifi",
-    category: "Coffee Shop",
-    image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=500&auto=format&fit=crop",
-  },
-  {
-    name: "Central City Library",
-    query: "Central City Library with free wifi",
-    category: "Library",
-    image: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=500&auto=format&fit=crop",
-  },
-  {
-    name: "Innovate Coworking Hub",
-    query: "Innovate Coworking Hub with power outlets",
-    category: "Coworking Space",
-    image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop",
-  },
-];
+let featuredPlaces = []; // Populated dynamically from database
+
+const loadFeaturedPlaces = async () => {
+  const result = await window.dbService.getLiveHotspots();
+  
+  if (result.success && result.data && result.data.length > 0) {
+    let candidates = [...result.data];
+    
+    // Smart algorithm: Mix nearby + recent
+    if (currentUserLocation) {
+      // Calculate distances
+      candidates = candidates.map(hotspot => ({
+        ...hotspot,
+        distance: calculateDistance(currentUserLocation.lat, currentUserLocation.lng, 
+                                   hotspot.latitude, hotspot.longitude)
+      }));
+      
+      // Get 2 nearest + 2 recent, combine & deduplicate
+      const nearbyPlaces = [...candidates].sort((a, b) => a.distance - b.distance).slice(0, 2);
+      const recentPlaces = [...candidates].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 2);
+      const combined = [...nearbyPlaces, ...recentPlaces];
+      const uniqueMap = new Map();
+      combined.forEach(place => uniqueMap.set(place.id, place));
+      featuredPlaces = Array.from(uniqueMap.values()).slice(0, 3);
+    } else {
+      // No location: show 3 most recent
+      featuredPlaces = candidates.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3);
+    }
+  }
+};
 ```
 
 **How Featured Places Render:**
 1. Each featured place is displayed as a card with:
-   - Background image
-   - Place name and category badge
+   - Hotspot photo (or default image)
+   - Place name and address
+   - Wi-Fi badge icon
+   - Gradient overlay
    - Hover effect (image scales up, background darkens)
-   - Click handler that executes a search with the place's query
+   - Click handler that pans map to hotspot location
 
 2. Rendered in `renderInitialView()` function as part of the sidebar initial state
-3. Users can click on any featured place card to trigger a search
+3. Re-loaded after geolocation succeeds for better location-aware results
+4. Users can click on any featured place card to view it on the map
 
 **UI Location:** Bottom section of the sidebar, below "Nearby Hotspots" section
+
+**Loading Sequence:**
+1. Page loads → `loadFeaturedPlaces()` (recent hotspots only)
+2. Render initial view with featured places
+3. Geolocation succeeds → `loadFeaturedPlaces()` again (with location-aware algorithm)
+4. Re-render with better nearby + recent mix
 
 ---
 
@@ -344,20 +363,38 @@ Search Overlay
 1. **Not Logged In:**
    - Segmented control: Sign In | Sign Up tabs
    - Email and password fields
+   - Forgot Password link (visible in Login mode only)
    - Google OAuth button
    - Error/Success messages
 
 2. **Logged In:**
-   - User avatar and name/email display
+   - Profile picture display (avatar image or initial letter)
+   - Upload/Change Avatar button (on hover)
+   - Delete Avatar button (visible when avatar exists)
+   - User name and email display
+   - Reset Password button
    - Sign Out button
 
 **Auth Flow:**
 - `signIn(email, password)` - Email/password authentication
 - `signUp(email, password, fullName)` - New account creation
 - `signInWithGoogle()` - OAuth login
+- `resetPassword(email)` - Send password reset email
 - Profile automatically created on signup
 
-**Location:** `supabase-auth.js`
+**Profile Pictures:**
+- `uploadProfilePicture(file)` - Upload avatar to Supabase Storage
+- `deleteProfilePicture()` - Remove avatar from storage and database
+- `getUserProfile(userId)` - Fetch profile with avatar_url
+- Storage location: `profile-pictures/{userId}/avatar_{timestamp}.{ext}`
+- Max file size: 5MB
+- Supported formats: JPG, PNG, GIF, WEBP
+- Avatars displayed on:
+  - Profile overlay
+  - Location cards (for hotspot creators)
+  - Map popups (for hotspot creators)
+
+**Location:** `supabase-auth.js`, `supabase-db.js`, `index.js`
 
 #### 4.5 **Contribute Overlay Component**
 

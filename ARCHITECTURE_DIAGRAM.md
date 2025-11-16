@@ -85,10 +85,19 @@ HTML Document
    │  ├─ Auth Form
    │  │  ├─ Name Field (Hidden initially)
    │  │  ├─ Email Field
-   │  │  └─ Password Field
+   │  │  ├─ Password Field
+   │  │  └─ Forgot Password Link (Login mode only)
    │  ├─ Error/Success Messages
    │  ├─ Google OAuth Button
    │  └─ User Info (When logged in)
+   │     ├─ Profile Picture
+   │     │  ├─ Upload/Change Avatar Button
+   │     │  ├─ Delete Avatar Button
+   │     │  └─ Display (Avatar image or initial letter)
+   │     ├─ Username Display
+   │     ├─ Email Display
+   │     ├─ Reset Password Button
+   │     └─ Sign Out Button
    │
    └─ Contribute Overlay (Hidden by default)
       ├─ Close Button
@@ -133,43 +142,62 @@ User Opens App
    ├─ Load Hotspots from Database
    │  ├─ window.dbService.getLiveHotspots()
    │  │  └─ Supabase RPC: get_all_hotspots_with_coords
-   │  │     ├─ Query: hotspots + creators (profiles) + photos
+   │  │     ├─ Query: hotspots + creators (profiles with avatar_url) + photos
    │  │     └─ Returns: Array of hotspot rows (with duplicates for photos)
    │  │
    │  ├─ Client-side Processing
    │  │  ├─ Group rows by hotspot ID
    │  │  ├─ Collect photos for each hotspot
    │  │  ├─ Sort photos by display_order
-   │  │  └─ Extract first photo path
+   │  │  ├─ Extract first photo path
+   │  │  └─ Include creator avatar_url for display
    │  │
    │  └─ Create Markers for Each Hotspot
    │     ├─ Custom icon (Blue gradient + WiFi icon)
-   │     ├─ Bind popup with hotspot details
+   │     ├─ Bind popup with hotspot details + creator avatar
    │     ├─ Add to map
    │     └─ Store in window.hotspotsMarkers array
+   │
+   ├─ Load Featured Places
+   │  ├─ loadFeaturedPlaces()
+   │  │  ├─ Fetch all hotspots from database
+   │  │  ├─ If user location NOT available:
+   │  │  │  └─ Sort by created_at (most recent)
+   │  │  └─ If user location available:
+   │  │     ├─ Calculate distance to each hotspot
+   │  │     ├─ Get 2 nearest hotspots
+   │  │     ├─ Get 2 most recent hotspots
+   │  │     ├─ Combine and remove duplicates
+   │  │     └─ Take top 3
+   │  └─ Store in featuredPlaces array
+   │
+   ├─ Render Initial UI
+   │  └─ renderInitialView()
+   │     ├─ Display filter pills
+   │     ├─ Display nearby hotspots (loading state)
+   │     └─ Display featured places cards (from featuredPlaces array)
    │
    ├─ Request User Geolocation
    │  ├─ Browser asks for permission
    │  ├─ Get user's latitude, longitude, accuracy
    │  ├─ Store in currentUserLocation
    │  ├─ Call updateMap() to center on user
-   │  └─ Create pulsing user marker
+   │  ├─ Create pulsing user marker
+   │  │
+   │  ├─ Update Nearby Hotspots List
+   │  │  ├─ Get all hotspots (already loaded)
+   │  │  ├─ Calculate distance to each (Haversine formula)
+   │  │  ├─ Sort by distance
+   │  │  ├─ Take top 5 nearest
+   │  │  └─ Render in "Nearby Hotspots" section
+   │  │
+   │  └─ Reload Featured Places with Location
+   │     ├─ loadFeaturedPlaces() again (now with location)
+   │     ├─ Get location-aware featured places
+   │     └─ Re-render initial view with updated featured places
    │
-   ├─ Update Nearby Hotspots List
-   │  ├─ Get all hotspots (already loaded)
-   │  ├─ Calculate distance to each (Haversine formula)
-   │  ├─ Sort by distance
-   │  ├─ Take top 5 nearest
-   │  └─ Render in "Nearby Hotspots" section
-   │
-   └─ Render Initial UI
-      ├─ renderInitialView()
-      │  ├─ Display filter pills
-      │  ├─ Display nearby hotspots
-      │  └─ Display featured places cards
-      │
-      └─ renderSearchRecommendations()
-         └─ Display recommendation pills in search overlay
+   └─ renderSearchRecommendations()
+      └─ Display recommendation pills in search overlay
 ```
 
 ---
@@ -530,19 +558,23 @@ updateNearbyHotspots() Function
         ├──────────────────┤    ├──────────────────────┤
         │ PK id (uuid)     │    │ PK id (int)          │
         │    username      │    │ FK hotspot_id (int)  │
-        │    points        │    │    storage_path      │
-        │    created_at    │    │    display_order     │
-        │    updated_at    │    │ FK uploaded_by (uuid)│
-        └──────────────────┘    │    created_at        │
-                               └──────────────────────┘
-                                       │
-                                       │
-        ┌──────────────────────────────▼────────────┐
-        │      Supabase Storage Bucket              │
-        │         hotspot-photos                    │
+        │    avatar_url    │    │    storage_path      │
+        │    points        │    │    display_order     │
+        │    created_at    │    │ FK uploaded_by (uuid)│
+        │    updated_at    │    │    created_at        │
+        └──────┬───────────┘    └──────────────────────┘
+               │                        │
+               │                        │
+        ┌──────▼────────────────────────▼────────────┐
+        │      Supabase Storage Buckets              │
         ├────────────────────────────────────────────┤
-        │ {hotspotId}/{timestamp}_{index}.{ext}     │
-        │ Example: 42/1699564800000_0.jpg           │
+        │  hotspot-photos/                           │
+        │    {hotspotId}/{timestamp}_{index}.{ext}   │
+        │    Example: 42/1699564800000_0.jpg         │
+        │                                            │
+        │  profile-pictures/                         │
+        │    {userId}/avatar_{timestamp}.{ext}       │
+        │    Example: abc123/avatar_1699564800000.jpg│
         └────────────────────────────────────────────┘
 
 
@@ -576,21 +608,37 @@ updateNearbyHotspots() Function
 ```
 Initial Page Load
 │
-└─ renderInitialView()
+├─ loadFeaturedPlaces() - FIRST THING
+│  ├─ Fetch all hotspots from database
+│  ├─ Apply smart algorithm:
+│  │  ├─ WITHOUT user location:
+│  │  │  └─ Sort by created_at DESC, take top 3
+│  │  └─ WITH user location:
+│  │     ├─ Calculate distance to each hotspot
+│  │     ├─ Sort by distance, take 2 nearest
+│  │     ├─ Sort by created_at, take 2 most recent
+│  │     ├─ Combine both lists
+│  │     ├─ Remove duplicates (by hotspot ID)
+│  │     └─ Take top 3 from combined list
+│  └─ Store in featuredPlaces array
+│
+└─ renderInitialView() - CALLED AFTER loadFeaturedPlaces() completes
    │
-   ├─ Get featuredPlaces array from state
-   │  └─ 3 hardcoded places with images & queries
+   ├─ Check if featuredPlaces array has data
+   │  ├─ If empty: Show "Loading featured places..." message
+   │  └─ If populated: Generate featured HTML
    │
-   ├─ Generate Featured HTML
-   │  └─ For each place:
+   ├─ Generate Featured HTML (if array populated)
+   │  └─ For each hotspot in featuredPlaces:
    │     └─ Create card with:
    │        ├─ <div class="relative h-24">
-   │        │  ├─ <img src="{place.image}" />
+   │        │  ├─ <img src="{first_photo_path or default}" />
    │        │  ├─ Gradient overlay (from-black/60)
-   │        │  └─ Category badge (top-right)
+   │        │  └─ Wi-Fi badge (top-right)
    │        │
    │        └─ <div class="p-3">
-   │           └─ Place name
+   │           ├─ Hotspot name
+   │           └─ Address (if available)
    │
    ├─ Inject into DOM
    │  └─ sidebarContent.innerHTML = HTML
@@ -598,25 +646,15 @@ Initial Page Load
    └─ Add Event Listeners
       └─ For each featured place card:
          ├─ Listen for click
-         └─ Call executeSearch(place.query)
-            └─ Triggers search flow (see Search Data Flow)
+         └─ Pan map to hotspot location
 
-User Clicks Featured Place Card
+After Geolocation Success
 │
-├─ Click Event Fired
-│
-└─ executeSearch("Artisan Roast Cafe with wifi")
-   │
-   ├─ Close overlays
-   ├─ toggleSidebar(false) if mobile
-   │
-   └─ 300ms later: handleSearch("Artisan Roast Cafe with wifi")
-      │
-      └─ CURRENTLY: Returns MOCK_PLACES (ignores query)
-      │
-      └─ FUTURE: Should search database
-         ├─ Find hotspots with name containing "Artisan Roast"
-         └─ Return results
+└─ Reload Featured Places with Location Data
+   ├─ loadFeaturedPlaces() called again
+   ├─ Now uses location-aware algorithm (2 nearby + 2 recent)
+   ├─ Updates featuredPlaces array
+   └─ Re-renders initial view with better featured places
 ```
 
 ---
