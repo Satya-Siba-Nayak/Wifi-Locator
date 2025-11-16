@@ -233,13 +233,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       )
       .join("");
 
-    const featuredHTML = featuredPlaces
-      .map((hotspot) => {
-        const photoUrl = hotspot.first_photo_path
-          ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
-          : "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop"; // Default image
+    // Generate featured HTML - check if array is populated
+    let featuredHTML = "";
+    if (featuredPlaces && featuredPlaces.length > 0) {
+      featuredHTML = featuredPlaces
+        .map((hotspot) => {
+          const photoUrl = hotspot.first_photo_path
+            ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
+            : "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop"; // Default image
 
-        return `
+          return `
             <button data-lat="${hotspot.latitude}" data-lng="${hotspot.longitude}" class="featured-place w-full text-left rounded-lg overflow-hidden bg-zinc-800 hover:bg-zinc-700/70 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 group">
                 <div class="relative h-24">
                     <img src="${photoUrl}" alt="${hotspot.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=500&auto=format&fit=crop'" />
@@ -257,8 +260,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 </div>
             </button>
         `;
-      })
-      .join("");
+        })
+        .join("");
+    }
 
     sidebarContent.innerHTML = `
             <div class="space-y-8">
@@ -1014,7 +1018,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Load featured places first, then handle geolocation
   loadFeaturedPlaces().then(() => {
-    console.log("📍 Featured places loaded, now requesting geolocation...");
+    console.log("📍 Featured places loaded:", featuredPlaces.length, "places");
+
+    // Render initial view immediately with featured places
+    renderInitialView();
 
     // Geolocation
     if (navigator.geolocation) {
@@ -1039,8 +1046,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           // Re-load featured places with user location for better results
           loadFeaturedPlaces().then(() => {
-            // Render initial view after a delay so user can see coordinates
-            setTimeout(() => renderInitialView(), 1000);
+            console.log(
+              "📍 Featured places reloaded with location:",
+              featuredPlaces.length,
+              "places",
+            );
+            // Re-render initial view with location-aware featured places
+            renderInitialView();
           });
         },
         (error) => {
@@ -1061,12 +1073,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             default:
               errorMessage = `Location error: ${error.message}`;
           }
-          sidebarContent.innerHTML = renderError(errorMessage);
           // Use a default location for the map (Pune, India)
           updateMap({ latitude: 18.5204, longitude: 73.8567 });
 
-          // Render without location
-          renderInitialView();
+          // Initial view already rendered above
         },
         {
           enableHighAccuracy: true,
@@ -1076,13 +1086,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
     } else {
       console.error("Geolocation not supported");
-      sidebarContent.innerHTML = renderError(
-        "Geolocation is not supported by this browser.",
-      );
       updateMap({ latitude: 18.5204, longitude: 73.8567 });
 
-      // Render without location
-      renderInitialView();
+      // Initial view already rendered above
     }
   });
 
