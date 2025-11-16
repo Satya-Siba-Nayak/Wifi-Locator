@@ -485,16 +485,45 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Store all markers globally for zoom updates
   window.hotspotsMarkers = [];
 
-  // Load featured places (top 3 most recent hotspots)
+  // Load featured places (diverse selection based on location and recency)
   const loadFeaturedPlaces = async () => {
     try {
       const result = await window.dbService.getLiveHotspots();
 
       if (result.success && result.data && result.data.length > 0) {
-        // Get top 3 most recent hotspots
-        featuredPlaces = result.data
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          .slice(0, 3);
+        let candidates = [...result.data];
+
+        // If user location is available, prioritize nearby places
+        if (currentUserLocation) {
+          candidates = candidates.map((hotspot) => ({
+            ...hotspot,
+            distance: calculateDistance(
+              currentUserLocation.lat,
+              currentUserLocation.lng,
+              hotspot.latitude,
+              hotspot.longitude,
+            ),
+          }));
+
+          // Mix of nearby and recent places
+          const nearbyPlaces = [...candidates]
+            .sort((a, b) => a.distance - b.distance)
+            .slice(0, 2);
+          const recentPlaces = [...candidates]
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(0, 2);
+
+          // Combine and remove duplicates
+          const combined = [...nearbyPlaces, ...recentPlaces];
+          const uniqueMap = new Map();
+          combined.forEach((place) => uniqueMap.set(place.id, place));
+          featuredPlaces = Array.from(uniqueMap.values()).slice(0, 3);
+        } else {
+          // No location: show most recent hotspots
+          featuredPlaces = candidates
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(0, 3);
+        }
 
         console.log("✅ Loaded featured places:", featuredPlaces);
       } else {
@@ -983,80 +1012,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     </div>
   `;
 
-  // Load featured places first
+  // Load featured places first, then handle geolocation
   loadFeaturedPlaces().then(() => {
     console.log("📍 Featured places loaded, now requesting geolocation...");
+
+    // Geolocation
+    if (navigator.geolocation) {
+      console.log("📍 Requesting geolocation...");
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log("✅ Geolocation success:", {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: `${position.coords.accuracy}m`,
+          });
+
+          currentUserLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+
+          // Update nearby hotspots when location is detected
+          updateNearbyHotspots();
+
+          updateMap(currentUserLocation);
+
+          // Re-load featured places with user location for better results
+          loadFeaturedPlaces().then(() => {
+            // Render initial view after a delay so user can see coordinates
+            setTimeout(() => renderInitialView(), 1000);
+          });
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          let errorMessage = "";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage =
+                "Location access denied. Please enable location permissions in your browser settings.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage =
+                "Location information unavailable. Please check your device settings.";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out. Please try again.";
+              break;
+            default:
+              errorMessage = `Location error: ${error.message}`;
+          }
+          sidebarContent.innerHTML = renderError(errorMessage);
+          // Use a default location for the map (Pune, India)
+          updateMap({ latitude: 18.5204, longitude: 73.8567 });
+
+          // Render without location
+          renderInitialView();
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        },
+      );
+    } else {
+      console.error("Geolocation not supported");
+      sidebarContent.innerHTML = renderError(
+        "Geolocation is not supported by this browser.",
+      );
+      updateMap({ latitude: 18.5204, longitude: 73.8567 });
+
+      // Render without location
+      renderInitialView();
+    }
   });
-
-  // Geolocation
-  if (navigator.geolocation) {
-    console.log("📍 Requesting geolocation...");
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        console.log("✅ Geolocation success:", {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: `${position.coords.accuracy}m`,
-        });
-
-        currentUserLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-
-        // Update nearby hotspots when location is detected
-        updateNearbyHotspots();
-
-        updateMap(currentUserLocation);
-
-        // Wait for featured places to load before rendering
-        await loadFeaturedPlaces();
-
-        // Render initial view after a delay so user can see coordinates
-        setTimeout(() => renderInitialView(), 3000);
-      },
-      async (error) => {
-        console.error("Geolocation error:", error);
-        let errorMessage = "";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage =
-              "Location access denied. Please enable location permissions in your browser settings.";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage =
-              "Location information unavailable. Please check your device settings.";
-            break;
-          case error.TIMEOUT:
-            errorMessage = "Location request timed out. Please try again.";
-            break;
-          default:
-            errorMessage = `Location error: ${error.message}`;
-        }
-        sidebarContent.innerHTML = renderError(errorMessage);
-        // Use a default location for the map (Pune, India)
-        updateMap({ latitude: 18.5204, longitude: 73.8567 });
-
-        // Wait for featured places to load before rendering
-        await loadFeaturedPlaces();
-        renderInitialView();
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    );
-  } else {
-    console.error("Geolocation not supported");
-    sidebarContent.innerHTML = renderError(
-      "Geolocation is not supported by this browser.",
-    );
-    updateMap({ latitude: 18.5204, longitude: 73.8567 });
-
-    // Wait for featured places to load before rendering
-    loadFeaturedPlaces().then(() => renderInitialView());
-  }
 
   // Sidebar and Overlay toggles
   menuButtonMap.addEventListener("click", () => toggleSidebar(true));
@@ -1908,8 +1936,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   recenterMapButton.addEventListener("click", () => {
     if (currentUserLocation) {
       updateMap(currentUserLocation);
+    } else {
+      alert("📍 Location not available. Please enable location permissions.");
     }
   });
+
+  // Reset map orientation button
+  const resetOrientationButton = document.getElementById(
+    "reset-orientation-button",
+  );
+  if (resetOrientationButton) {
+    resetOrientationButton.addEventListener("click", () => {
+      if (map) {
+        // Reset map to north orientation and default zoom
+        map.setView(map.getCenter(), 13);
+        console.log("🧭 Map orientation reset");
+      }
+    });
+  }
 
   // Initial Renders
   renderInitialView();
