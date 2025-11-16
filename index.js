@@ -1116,7 +1116,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     signupTab.classList.remove("text-zinc-100");
     nameField.classList.add("hidden");
     nameField.querySelector("input").required = false;
-    authSubmitBtn.textContent = "Sign In";
+
+    // Reset button state and text
+    authSubmitBtn.disabled = false;
+    authSubmitBtn.innerHTML = "Sign In";
 
     // Show forgot password link in login mode
     if (forgotPasswordLink) {
@@ -1139,7 +1142,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     loginTab.classList.remove("text-zinc-100");
     nameField.classList.remove("hidden");
     nameField.querySelector("input").required = true;
-    authSubmitBtn.textContent = "Create Account";
+
+    // Reset button state and text
+    authSubmitBtn.disabled = false;
+    authSubmitBtn.innerHTML = "Create Account";
 
     // Hide forgot password link in signup mode
     if (forgotPasswordLink) {
@@ -1155,51 +1161,128 @@ document.addEventListener("DOMContentLoaded", async () => {
   authForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    // Clear previous messages
+    if (authErrorMsg) authErrorMsg.classList.add("hidden");
+    if (authSuccessMsg) authSuccessMsg.classList.add("hidden");
+
     if (!window.authService) {
       console.error("Auth service not initialized");
+      window.authService?.showError(
+        "Authentication service not ready. Please refresh the page.",
+      );
       return;
     }
 
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const name = document.getElementById("name").value;
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const nameInput = document.getElementById("name");
+
+    const email = emailInput?.value?.trim();
+    const password = passwordInput?.value;
+    const name = nameInput?.value?.trim();
+
+    // Validation
+    if (!email) {
+      window.authService.showError("Please enter your email address.");
+      emailInput?.focus();
+      return;
+    }
+
+    if (!password) {
+      window.authService.showError("Please enter your password.");
+      passwordInput?.focus();
+      return;
+    }
+
+    if (currentAuthMode === "signup" && !name) {
+      window.authService.showError("Please enter your name.");
+      nameInput?.focus();
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      window.authService.showError("Please enter a valid email address.");
+      emailInput?.focus();
+      return;
+    }
+
+    // Password length validation
+    if (password.length < 6) {
+      window.authService.showError(
+        "Password must be at least 6 characters long.",
+      );
+      passwordInput?.focus();
+      return;
+    }
 
     // Disable submit button and show loading state
+    if (!authSubmitBtn) {
+      console.error("Submit button not found");
+      return;
+    }
+
     authSubmitBtn.disabled = true;
     const originalText = authSubmitBtn.textContent;
-    authSubmitBtn.textContent = "Please wait...";
+    authSubmitBtn.innerHTML = `
+      <div class="flex items-center justify-center gap-2">
+        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>${currentAuthMode === "signup" ? "Creating account..." : "Signing in..."}</span>
+      </div>
+    `;
 
     try {
       let result;
       if (currentAuthMode === "signup") {
+        console.log("📝 Attempting signup for:", email);
         result = await window.authService.signUp(email, password, name);
       } else {
+        console.log("🔐 Attempting sign in for:", email);
         result = await window.authService.signIn(email, password);
       }
 
       if (result.success) {
+        console.log("✅ Authentication successful");
         window.authService.showSuccess(
           currentAuthMode === "signup"
-            ? "Account created successfully!"
-            : "Signed in successfully!",
+            ? "✅ Account created successfully! Welcome!"
+            : "✅ Signed in successfully! Welcome back!",
         );
         authForm.reset();
+
         // Close overlay after a short delay
         setTimeout(() => {
           toggleOverlay(profileOverlay, false);
         }, 1500);
       } else {
-        window.authService.showError(result.error);
+        console.error("❌ Authentication failed:", result.error);
+        window.authService.showError(
+          result.error || "Authentication failed. Please try again.",
+        );
       }
     } catch (error) {
-      console.error("Auth error:", error);
-      window.authService.showError(
-        "An unexpected error occurred. Please try again.",
-      );
+      console.error("❌ Auth error:", error);
+
+      // Provide more specific error messages
+      let errorMessage = "An unexpected error occurred. Please try again.";
+
+      if (error.message?.includes("fetch")) {
+        errorMessage = "Network error. Please check your internet connection.";
+      } else if (error.message?.includes("timeout")) {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      window.authService.showError(errorMessage);
     } finally {
       // Re-enable submit button
       authSubmitBtn.disabled = false;
-      authSubmitBtn.textContent = originalText;
+      authSubmitBtn.innerHTML = originalText;
     }
   });
 
