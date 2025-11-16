@@ -130,6 +130,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
       : null;
     const creatorName = hotspot.created_by_username || "Anonymous";
+    const creatorAvatar = hotspot.created_by_avatar_url;
+    const creatorInitial = creatorName.charAt(0).toUpperCase();
     const mapsUrl = `https://www.openstreetmap.org/?mlat=${hotspot.latitude}&mlon=${hotspot.longitude}#map=18/${hotspot.latitude}/${hotspot.longitude}`;
 
     return `
@@ -161,9 +163,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002 2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                     </a>
                 </div>
-                <div class="mt-3 pt-3 border-t border-zinc-700/50 flex items-center justify-between text-xs text-zinc-500">
-                    <span>Added by ${creatorName}</span>
-                    ${hotspot.created_at ? `<span>${formatDate(hotspot.created_at)}</span>` : ""}
+                <div class="mt-3 pt-3 border-t border-zinc-700/50 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2">
+                        ${
+                          creatorAvatar
+                            ? `<img src="${creatorAvatar}" alt="${creatorName}" class="w-5 h-5 rounded-full object-cover border border-zinc-600" />`
+                            : `<div class="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">${creatorInitial}</div>`
+                        }
+                        <span class="text-zinc-500">Added by ${creatorName}</span>
+                    </div>
+                    ${hotspot.created_at ? `<span class="text-zinc-500">${formatDate(hotspot.created_at)}</span>` : ""}
                 </div>
             </div>
         </div>`;
@@ -715,6 +724,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Generate popup content for a hotspot
   const generatePopupContent = (hotspot) => {
     const creatorName = hotspot.created_by_username || "Anonymous";
+    const creatorAvatar = hotspot.created_by_avatar_url;
+    const creatorInitial = creatorName.charAt(0).toUpperCase();
     const photoUrl = hotspot.first_photo_path
       ? window.dbService.getPhotoUrl(hotspot.first_photo_path)
       : null;
@@ -784,9 +795,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           <div class="popup-footer">
             <div class="popup-creator">
-              <div class="popup-avatar">
-                ${creatorName.charAt(0).toUpperCase()}
-              </div>
+              ${
+                creatorAvatar
+                  ? `<img src="${creatorAvatar}" alt="${creatorName}" class="popup-avatar" style="object-fit: cover;" />`
+                  : `<div class="popup-avatar">${creatorInitial}</div>`
+              }
               <div class="popup-creator-info">
                 <p>Added by</p>
                 <p class="popup-creator-name">${creatorName}</p>
@@ -1260,6 +1273,173 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Re-enable button
         signoutBtn.disabled = false;
         signoutBtn.textContent = originalText;
+      }
+    });
+  }
+
+  // Reset Password (for logged-in users)
+  const resetPasswordBtn = document.getElementById("reset-password-button");
+  if (resetPasswordBtn) {
+    resetPasswordBtn.addEventListener("click", async () => {
+      if (!window.authService) {
+        console.error("Auth service not initialized");
+        return;
+      }
+
+      const currentUser = window.authService.getCurrentUser();
+      if (!currentUser || !currentUser.email) {
+        window.authService.showError("Unable to determine your email address.");
+        return;
+      }
+
+      // Confirm action
+      if (!confirm(`Send password reset link to ${currentUser.email}?`)) {
+        return;
+      }
+
+      // Disable button and show loading state
+      resetPasswordBtn.disabled = true;
+      const originalText = resetPasswordBtn.textContent;
+      resetPasswordBtn.textContent = "Sending...";
+
+      try {
+        const result = await window.authService.resetPassword(
+          currentUser.email,
+        );
+
+        if (result.success) {
+          window.authService.showSuccess(result.message);
+        } else {
+          window.authService.showError(result.error);
+        }
+      } catch (error) {
+        console.error("Password reset error:", error);
+        window.authService.showError(
+          "Failed to send reset email. Please try again.",
+        );
+      } finally {
+        // Re-enable button
+        resetPasswordBtn.disabled = false;
+        resetPasswordBtn.textContent = originalText;
+      }
+    });
+  }
+
+  // Profile Picture Management
+  const changeAvatarBtn = document.getElementById("change-avatar-button");
+  const avatarUploadInput = document.getElementById("avatar-upload-input");
+  const deleteAvatarBtn = document.getElementById("delete-avatar-button");
+  const userAvatarImg = document.getElementById("user-avatar-img");
+  const userAvatarDiv = document.getElementById("user-avatar");
+
+  // Change/Upload Avatar
+  if (changeAvatarBtn && avatarUploadInput) {
+    changeAvatarBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      avatarUploadInput.click();
+    });
+
+    avatarUploadInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!window.dbService) {
+        console.error("DB service not initialized");
+        return;
+      }
+
+      // Show loading state
+      changeAvatarBtn.disabled = true;
+      changeAvatarBtn.innerHTML = `
+        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      `;
+
+      try {
+        const result = await window.dbService.uploadProfilePicture(file);
+
+        if (result.success) {
+          // Update UI with new avatar
+          userAvatarImg.src = result.avatarUrl;
+          userAvatarImg.classList.remove("hidden");
+          userAvatarDiv.classList.add("hidden");
+          deleteAvatarBtn.classList.remove("hidden");
+
+          window.authService.showSuccess(
+            "Profile picture updated successfully!",
+          );
+        } else {
+          window.authService.showError(result.error);
+        }
+      } catch (error) {
+        console.error("Avatar upload error:", error);
+        window.authService.showError(
+          "Failed to upload profile picture. Please try again.",
+        );
+      } finally {
+        // Reset button state
+        changeAvatarBtn.disabled = false;
+        changeAvatarBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        `;
+        // Clear file input
+        avatarUploadInput.value = "";
+      }
+    });
+  }
+
+  // Delete Avatar
+  if (deleteAvatarBtn) {
+    deleteAvatarBtn.addEventListener("click", async () => {
+      if (!window.dbService) {
+        console.error("DB service not initialized");
+        return;
+      }
+
+      if (!confirm("Are you sure you want to remove your profile picture?")) {
+        return;
+      }
+
+      // Show loading state
+      deleteAvatarBtn.disabled = true;
+      const originalText = deleteAvatarBtn.textContent;
+      deleteAvatarBtn.textContent = "Removing...";
+
+      try {
+        const result = await window.dbService.deleteProfilePicture();
+
+        if (result.success) {
+          // Update UI to show default avatar
+          userAvatarImg.classList.add("hidden");
+          userAvatarDiv.classList.remove("hidden");
+          deleteAvatarBtn.classList.add("hidden");
+
+          // Update avatar initial
+          const currentUser = window.authService.getCurrentUser();
+          const initial = (currentUser?.email?.[0] || "?").toUpperCase();
+          userAvatarDiv.textContent = initial;
+
+          window.authService.showSuccess(
+            "Profile picture removed successfully!",
+          );
+        } else {
+          window.authService.showError(result.error);
+        }
+      } catch (error) {
+        console.error("Avatar delete error:", error);
+        window.authService.showError(
+          "Failed to remove profile picture. Please try again.",
+        );
+      } finally {
+        // Re-enable button
+        deleteAvatarBtn.disabled = false;
+        deleteAvatarBtn.textContent = originalText;
       }
     });
   }

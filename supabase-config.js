@@ -24,7 +24,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 });
 
 // Update UI based on authentication state
-function updateUIForAuthState(user) {
+async function updateUIForAuthState(user) {
   const userInfoDiv = document.getElementById("user-info");
   const authForm = document.getElementById("auth-form");
   const segmentedControl = document.getElementById("segmented-control");
@@ -43,21 +43,74 @@ function updateUIForAuthState(user) {
 
       // Update user info display
       const userAvatar = document.getElementById("user-avatar");
+      const userAvatarImg = document.getElementById("user-avatar-img");
       const userName = document.getElementById("user-name");
       const userEmail = document.getElementById("user-email");
+      const deleteAvatarBtn = document.getElementById("delete-avatar-button");
 
-      if (userAvatar) {
-        const initial = (user.user_metadata?.full_name || user.email)
-          .charAt(0)
-          .toUpperCase();
-        userAvatar.textContent = initial;
-      }
       if (userName) {
         userName.textContent =
           user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
       }
       if (userEmail) {
         userEmail.textContent = user.email;
+      }
+
+      // Load profile picture from database
+      if (window.dbService && window.dbService.initialized) {
+        try {
+          const profileResult = await window.dbService.getUserProfile(user.id);
+          if (profileResult.success && profileResult.data?.avatar_url) {
+            // Show profile picture
+            if (userAvatarImg) {
+              userAvatarImg.src = profileResult.data.avatar_url;
+              userAvatarImg.classList.remove("hidden");
+            }
+            if (userAvatar) {
+              userAvatar.classList.add("hidden");
+            }
+            if (deleteAvatarBtn) {
+              deleteAvatarBtn.classList.remove("hidden");
+            }
+          } else {
+            // Show default avatar with initial
+            if (userAvatar) {
+              const initial = (user.user_metadata?.full_name || user.email)
+                .charAt(0)
+                .toUpperCase();
+              userAvatar.textContent = initial;
+              userAvatar.classList.remove("hidden");
+            }
+            if (userAvatarImg) {
+              userAvatarImg.classList.add("hidden");
+            }
+            if (deleteAvatarBtn) {
+              deleteAvatarBtn.classList.add("hidden");
+            }
+          }
+        } catch (error) {
+          console.error("Error loading profile picture:", error);
+          // Fallback to initial
+          if (userAvatar) {
+            const initial = (user.user_metadata?.full_name || user.email)
+              .charAt(0)
+              .toUpperCase();
+            userAvatar.textContent = initial;
+            userAvatar.classList.remove("hidden");
+          }
+          if (userAvatarImg) {
+            userAvatarImg.classList.add("hidden");
+          }
+        }
+      } else {
+        // DB service not ready, show initial
+        if (userAvatar) {
+          const initial = (user.user_metadata?.full_name || user.email)
+            .charAt(0)
+            .toUpperCase();
+          userAvatar.textContent = initial;
+          userAvatar.classList.remove("hidden");
+        }
       }
     }
   } else {

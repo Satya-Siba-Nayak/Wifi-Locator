@@ -51,6 +51,7 @@ class SupabaseDBService {
             latitude: row.latitude,
             longitude: row.longitude,
             created_by_username: row.username || null,
+            created_by_avatar_url: row.avatar_url || null,
             created_by_id: row.created_by,
             photos: [],
             first_photo_path: null,
@@ -389,6 +390,162 @@ class SupabaseDBService {
       console.error("Error fetching user profile:", error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Upload or update user's profile picture
+   * @param {File} file - The image file to upload
+   * @param {string} userId - User ID (optional, defaults to current user)
+   */
+  async uploadProfilePicture(file, userId = null) {
+    try {
+      const user = userId
+        ? { id: userId }
+        : window.supabaseHelpers.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: "You must be signed in to upload a profile picture",
+        };
+      }
+
+      // Validate file type
+      const validTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
+      if (!validTypes.includes(file.type)) {
+        return {
+          success: false,
+          error:
+            "Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.",
+        };
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        return {
+          success: false,
+          error: "File size too large. Maximum size is 5MB.",
+        };
+      }
+
+      // Get current profile to check for existing avatar
+      const { data: profile } = await this.supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .single();
+
+      // Delete old avatar if exists
+      if (profile?.avatar_url) {
+        await this.deleteProfilePicture(user.id);
+      }
+
+      // Create unique filename
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}/avatar_${Date.now()}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } =
+        await this.supabase.storage
+          .from("profile-pictures")
+          .upload(fileName, file, {
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = this.supabase.storage
+        .from("profile-pictures")
+        .getPublicUrl(uploadData.path);
+
+      const avatarUrl = urlData.publicUrl;
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await this.supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      console.log("Profile picture uploaded:", avatarUrl);
+      return { success: true, avatarUrl, path: uploadData.path };
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Delete user's profile picture
+   * @param {string} userId - User ID (optional, defaults to current user)
+   */
+  async deleteProfilePicture(userId = null) {
+    try {
+      const user = userId
+        ? { id: userId }
+        : window.supabaseHelpers.getCurrentUser();
+      if (!user) {
+        return { success: false, error: "You must be signed in" };
+      }
+
+      // Get current avatar URL
+      const { data: profile } = await this.supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.avatar_url) {
+        return { success: true, message: "No profile picture to delete" };
+      }
+
+      // Extract storage path from URL
+      // URL format: https://.../storage/v1/object/public/profile-pictures/{path}
+      const urlParts = profile.avatar_url.split("/profile-pictures/");
+      if (urlParts.length > 1) {
+        const storagePath = urlParts[1];
+
+        // Delete from storage
+        const { error: deleteError } = await this.supabase.storage
+          .from("profile-pictures")
+          .remove([storagePath]);
+
+        if (deleteError) {
+          console.warn("Error deleting from storage:", deleteError);
+        }
+      }
+
+      // Update profile to remove avatar URL
+      const { error: updateError } = await this.supabase
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      console.log("Profile picture deleted");
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting profile picture:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get public URL for a profile picture
+   * @param {string} avatarUrl - Avatar URL from database
+   */
+  getProfilePictureUrl(avatarUrl) {
+    return avatarUrl || null;
   }
 
   /**
